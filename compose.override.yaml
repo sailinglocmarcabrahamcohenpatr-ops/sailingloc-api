@@ -1,0 +1,20 @@
+
+services:
+
+  app:
+    build:
+      target: dev
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: 1
+
+  nginx:
+    ports:
+      - "8080:80"
+  database:
+    ports:
+      - "5433:5432"
+###< doctrine/doctrine-bundle ###

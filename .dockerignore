@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env.local
+.env.dev.local
+.env.*.local
+var/cache
+var/log
+var/sessions
+node_modules
+docker
+*.md
