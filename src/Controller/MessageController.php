@@ -59,8 +59,14 @@ class MessageController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $expediteur = $this->utilisateurRepository->find($data['id_utilisateur'] ?? 0);
-        $destinataire = $this->utilisateurRepository->find($data['id_utilisateur_1'] ?? 0);
+        $required = ['contenu', 'id_utilisateur', 'id_utilisateur_1'];
+        $missing = array_filter($required, fn($f) => empty($data[$f]));
+        if ($missing) {
+            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        }
+
+        $expediteur = $this->utilisateurRepository->find($data['id_utilisateur']);
+        $destinataire = $this->utilisateurRepository->find($data['id_utilisateur_1']);
 
         if (!$expediteur || !$destinataire) {
             return $this->json(['message' => 'Expéditeur ou destinataire introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);

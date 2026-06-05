@@ -62,9 +62,15 @@ class BateauController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $port = $this->portRepository->find($data['id_port'] ?? 0);
-        $proprietaire = $this->utilisateurRepository->find($data['id_utilisateur'] ?? 0);
-        $typeBateau = $this->typeBateauRepository->find($data['id_type_bateau'] ?? 0);
+        $required = ['nom_bateau', 'motorisation', 'taille', 'prix_jour', 'id_port', 'id_utilisateur', 'id_type_bateau'];
+        $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
+        if ($missing) {
+            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        }
+
+        $port = $this->portRepository->find($data['id_port']);
+        $proprietaire = $this->utilisateurRepository->find($data['id_utilisateur']);
+        $typeBateau = $this->typeBateauRepository->find($data['id_type_bateau']);
 
         if (!$port || !$proprietaire || !$typeBateau) {
             return $this->json(['message' => 'Port, utilisateur ou type de bateau introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);

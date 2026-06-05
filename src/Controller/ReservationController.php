@@ -67,10 +67,16 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $bateau = $this->bateauRepository->find($data['id_bateau'] ?? 0);
-        $utilisateur = $this->utilisateurRepository->find($data['id_utilisateur'] ?? 0);
-        $contrat = $this->contratRepository->find($data['id_contrat'] ?? 0);
-        $statut = $this->statutRepository->find($data['id_statut_reservation'] ?? 0);
+        $required = ['date_debut', 'date_fin', 'montant_total', 'id_bateau', 'id_utilisateur', 'id_contrat', 'id_statut_reservation'];
+        $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
+        if ($missing) {
+            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        }
+
+        $bateau = $this->bateauRepository->find($data['id_bateau']);
+        $utilisateur = $this->utilisateurRepository->find($data['id_utilisateur']);
+        $contrat = $this->contratRepository->find($data['id_contrat']);
+        $statut = $this->statutRepository->find($data['id_statut_reservation']);
 
         if (!$bateau || !$utilisateur || !$contrat || !$statut) {
             return $this->json(['message' => 'Bateau, utilisateur, contrat ou statut introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);

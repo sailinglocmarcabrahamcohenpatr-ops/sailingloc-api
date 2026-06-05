@@ -54,6 +54,12 @@ class UtilisateurController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
+        $required = ['nom', 'prenom', 'email', 'password'];
+        $missing = array_filter($required, fn($f) => empty($data[$f]));
+        if ($missing) {
+            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        }
+
         $utilisateur = new Utilisateur();
         $utilisateur->setNom($data['nom'] ?? '');
         $utilisateur->setPrenom($data['prenom'] ?? '');

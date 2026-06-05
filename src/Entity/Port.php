@@ -8,6 +8,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: PortRepository::class)]
 #[ORM\Table(name: 'port')]
@@ -21,14 +22,20 @@ class Port
 
     #[ORM\Column(length: 150)]
     #[Groups(['port:read', 'bateau:read'])]
+    #[Assert\NotBlank(message: 'Le nom est obligatoire.')]
+    #[Assert\Length(max: 150, maxMessage: 'Le nom ne peut pas dépasser {{ limit }} caractères.')]
     private string $nom;
 
     #[ORM\Column(length: 150)]
     #[Groups(['port:read', 'bateau:read'])]
+    #[Assert\NotBlank(message: 'Le pays est obligatoire.')]
+    #[Assert\Length(max: 150, maxMessage: 'Le pays ne peut pas dépasser {{ limit }} caractères.')]
     private string $pays;
 
     #[ORM\Column(length: 150)]
     #[Groups(['port:read', 'bateau:read'])]
+    #[Assert\NotBlank(message: 'La ville est obligatoire.')]
+    #[Assert\Length(max: 150, maxMessage: 'La ville ne peut pas dépasser {{ limit }} caractères.')]
     private string $ville;
 
     #[ORM\Column(name: 'code_postal', length: 20, nullable: true)]

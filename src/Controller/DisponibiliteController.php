@@ -50,7 +50,13 @@ class DisponibiliteController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $bateau = $this->bateauRepository->find($data['id_bateau'] ?? 0);
+        $required = ['date_debut', 'id_bateau'];
+        $missing = array_filter($required, fn($f) => empty($data[$f]));
+        if ($missing) {
+            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        }
+
+        $bateau = $this->bateauRepository->find($data['id_bateau']);
 
         if (!$bateau) {
             return $this->json(['message' => 'Bateau introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);

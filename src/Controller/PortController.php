@@ -48,6 +48,15 @@ class PortController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
+        $required = ['nom', 'pays', 'ville'];
+        $missing = array_filter($required, fn($f) => empty($data[$f]));
+        if ($missing) {
+            return $this->json([
+                'message' => 'Champs obligatoires manquants.',
+                'champs'  => array_values($missing),
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
         $port = new Port();
         $port->setNom($data['nom'] ?? '');
         $port->setPays($data['pays'] ?? '');

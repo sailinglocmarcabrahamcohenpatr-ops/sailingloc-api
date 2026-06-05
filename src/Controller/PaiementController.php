@@ -54,9 +54,15 @@ class PaiementController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $reservation = $this->reservationRepository->find($data['id_reservation'] ?? 0);
-        $statutRef = $this->statutPaiementRepository->find($data['id_statut_paiement'] ?? 0);
-        $mode = $this->modePaiementRepository->find($data['id_mode_paiement'] ?? 0);
+        $required = ['montant', 'id_reservation', 'id_statut_paiement', 'id_mode_paiement'];
+        $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
+        if ($missing) {
+            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        }
+
+        $reservation = $this->reservationRepository->find($data['id_reservation']);
+        $statutRef = $this->statutPaiementRepository->find($data['id_statut_paiement']);
+        $mode = $this->modePaiementRepository->find($data['id_mode_paiement']);
 
         if (!$reservation || !$statutRef || !$mode) {
             return $this->json(['message' => 'Réservation, statut ou mode de paiement introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
