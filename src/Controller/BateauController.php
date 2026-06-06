@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/bateaux', name: 'api_bateaux_')]
@@ -54,6 +55,7 @@ class BateauController extends AbstractController
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
+    #[IsGranted('ROLE_PROPRIETAIRE')]
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -110,6 +112,10 @@ class BateauController extends AbstractController
             return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
         }
 
+        if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (isset($data['nom_bateau'])) $bateau->setNomBateau($data['nom_bateau']);
@@ -151,6 +157,10 @@ class BateauController extends AbstractController
 
         if (!$bateau) {
             return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
         $this->em->remove($bateau);

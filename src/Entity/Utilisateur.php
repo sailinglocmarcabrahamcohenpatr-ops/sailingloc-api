@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\RoleEnum;
 use App\Repository\UtilisateurRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -51,9 +52,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: Bateau::class, mappedBy: 'proprietaire')]
     private Collection $bateaux;
 
-    #[ORM\ManyToMany(targetEntity: Role::class, inversedBy: 'utilisateurs')]
-    #[ORM\JoinTable(name: 'utilisateur_role')]
-    private Collection $roles;
+    #[ORM\Column(type: Types::JSON)]
+    #[Groups(['utilisateur:read'])]
+    private array $roles = [];
 
     #[ORM\ManyToMany(targetEntity: Document::class, inversedBy: 'utilisateurs')]
     #[ORM\JoinTable(name: 'document_utilisateur')]
@@ -78,7 +79,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     public function __construct()
     {
         $this->bateaux = new ArrayCollection();
-        $this->roles = new ArrayCollection();
+        $this->roles = [RoleEnum::USER->value];
         $this->documents = new ArrayCollection();
         $this->bateauxFavoris = new ArrayCollection();
         $this->messagesEnvoyes = new ArrayCollection();
@@ -203,25 +204,25 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getRoleEntities(): Collection
+    public function addRole(RoleEnum $role): static
     {
-        return $this->roles;
-    }
-
-    public function addRole(Role $role): static
-    {
-        if (!$this->roles->contains($role)) {
-            $this->roles->add($role);
+        if (!in_array($role->value, $this->roles, true)) {
+            $this->roles[] = $role->value;
         }
 
         return $this;
     }
 
-    public function removeRole(Role $role): static
+    public function removeRole(RoleEnum $role): static
     {
-        $this->roles->removeElement($role);
+        $this->roles = array_values(array_filter($this->roles, fn(string $r) => $r !== $role->value));
 
         return $this;
+    }
+
+    public function hasRole(RoleEnum $role): bool
+    {
+        return in_array($role->value, $this->roles, true);
     }
 
     public function getDocuments(): Collection
@@ -298,13 +299,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function getRoles(): array
     {
-        $roles = $this->getRoleEntities()->map(
-            fn(Role $role) => 'ROLE_' . strtoupper($role->getNomRole())
-        )->toArray();
-
-        $roles[] = 'ROLE_USER';
-
-        return array_unique($roles);
+        return array_unique(array_merge($this->roles, [RoleEnum::USER->value]));
     }
 
     public function eraseCredentials(): void {}

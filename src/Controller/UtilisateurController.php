@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -26,6 +27,7 @@ class UtilisateurController extends AbstractController
     ) {}
 
     #[Route('', name: 'list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function list(): JsonResponse
     {
         $utilisateurs = $this->repository->findAll();
@@ -42,10 +44,15 @@ class UtilisateurController extends AbstractController
             return $this->json(['message' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
         }
 
+        if (!$this->isGranted('ROLE_ADMIN') && $this->getUser() !== $utilisateur) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
         return $this->json($utilisateur, Response::HTTP_OK, [], ['groups' => ['utilisateur:read']]);
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -88,6 +95,10 @@ class UtilisateurController extends AbstractController
             return $this->json(['message' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
         }
 
+        if (!$this->isGranted('ROLE_ADMIN') && $this->getUser() !== $utilisateur) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (isset($data['nom'])) $utilisateur->setNom($data['nom']);
@@ -108,6 +119,7 @@ class UtilisateurController extends AbstractController
     }
 
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function delete(int $id): JsonResponse
     {
         $utilisateur = $this->repository->find($id);

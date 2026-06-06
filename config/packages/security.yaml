@@ -3,6 +3,10 @@ security:
         App\Entity\Utilisateur:
             algorithm: auto
 
+    role_hierarchy:
+        ROLE_PROPRIETAIRE: [ROLE_USER]
+        ROLE_ADMIN:        [ROLE_PROPRIETAIRE]
+
     providers:
         app_user_provider:
             entity:

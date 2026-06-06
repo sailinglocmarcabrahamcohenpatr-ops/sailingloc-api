@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api/reservations', name: 'api_reservations_')]
@@ -35,7 +36,12 @@ class ReservationController extends AbstractController
         $utilisateurId = $request->query->get('utilisateur');
         $bateauId = $request->query->get('bateau');
 
-        if ($utilisateurId) {
+        // Non-admin : force le filtre sur ses propres réservations
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            /** @var \App\Entity\Utilisateur $currentUser */
+            $currentUser = $this->getUser();
+            $reservations = $this->repository->findByUtilisateur($currentUser->getId());
+        } elseif ($utilisateurId) {
             $reservations = $this->repository->findByUtilisateur((int) $utilisateurId);
         } elseif ($bateauId) {
             $reservations = $this->repository->findByBateau((int) $bateauId);
@@ -53,6 +59,10 @@ class ReservationController extends AbstractController
 
         if (!$reservation) {
             return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getUtilisateur() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
         return $this->json($reservation, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
@@ -111,6 +121,10 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
         }
 
+        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getUtilisateur() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
         $data = json_decode($request->getContent(), true);
 
         if (isset($data['date_debut'])) $reservation->setDateDebut(new \DateTime($data['date_debut']));
@@ -140,6 +154,10 @@ class ReservationController extends AbstractController
 
         if (!$reservation) {
             return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getUtilisateur() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
         $this->em->remove($reservation);

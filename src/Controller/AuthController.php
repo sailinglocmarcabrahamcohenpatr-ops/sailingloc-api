@@ -21,7 +21,7 @@ class AuthController extends AbstractController
     public function login(): never
     {
         // Interceptée par le firewall json_login avant d'arriver ici
-        throw new \LogicException('Le firewall doit intercepter cette route.');
+        throw new \LogicException('le firewall n\'est pas configuré correctement pour intercepter cette route.');
     }
 
     #[Route('/register', name: 'register', methods: ['POST'])]

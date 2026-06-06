@@ -2,9 +2,9 @@
 
 namespace App\Controller;
 
+use App\Enum\RoleEnum;
 use App\Repository\AssuranceRepository;
 use App\Repository\ModeDePaiementRepository;
-use App\Repository\RoleRepository;
 use App\Repository\StatutPaiementRepository;
 use App\Repository\StatutReservationRepository;
 use App\Repository\TypeBateauRepository;
@@ -20,7 +20,6 @@ class ReferentielController extends AbstractController
     public function __construct(
         private readonly TypeBateauRepository $typeBateauRepository,
         private readonly TypeDocumentRepository $typeDocumentRepository,
-        private readonly RoleRepository $roleRepository,
         private readonly StatutReservationRepository $statutReservationRepository,
         private readonly ModeDePaiementRepository $modePaiementRepository,
         private readonly StatutPaiementRepository $statutPaiementRepository,
@@ -42,7 +41,9 @@ class ReferentielController extends AbstractController
     #[Route('/roles', name: 'roles', methods: ['GET'])]
     public function roles(): JsonResponse
     {
-        return $this->json($this->roleRepository->findAll(), Response::HTTP_OK, [], ['groups' => ['referentiel:read']]);
+        $roles = array_map(fn(RoleEnum $r) => ['value' => $r->value, 'name' => $r->name], RoleEnum::cases());
+
+        return $this->json($roles, Response::HTTP_OK);
     }
 
     #[Route('/statuts-reservations', name: 'statuts_reservations', methods: ['GET'])]
