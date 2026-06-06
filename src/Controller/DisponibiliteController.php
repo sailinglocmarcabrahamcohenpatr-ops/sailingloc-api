@@ -6,6 +6,7 @@ use App\Entity\Disponibilite;
 use App\Repository\BateauRepository;
 use App\Repository\DisponibiliteRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Disponibilités')]
 #[Route('/api/disponibilites', name: 'api_disponibilites_')]
 class DisponibiliteController extends AbstractController
 {
@@ -24,12 +26,26 @@ class DisponibiliteController extends AbstractController
         private readonly ValidatorInterface $validator,
     ) {}
 
+    #[OA\Get(
+        path: '/api/disponibilites',
+        summary: 'Lister toutes les disponibilités',
+        responses: [new OA\Response(response: 200, description: 'Liste des disponibilités')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['disponibilite:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/disponibilites/{id}',
+        summary: 'Détail d\'une disponibilité',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Disponibilité trouvée'),
+            new OA\Response(response: 404, description: 'Non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -42,6 +58,26 @@ class DisponibiliteController extends AbstractController
         return $this->json($dispo, Response::HTTP_OK, [], ['groups' => ['disponibilite:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/disponibilites',
+        summary: 'Créer une disponibilité (PROPRIETAIRE du bateau)',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['date_debut', 'id_bateau'],
+                properties: [
+                    new OA\Property(property: 'date_debut', type: 'string', format: 'date', example: '2026-07-01'),
+                    new OA\Property(property: 'date_fin', type: 'string', format: 'date', example: '2026-07-31', nullable: true),
+                    new OA\Property(property: 'statut', type: 'string', example: 'disponible'),
+                    new OA\Property(property: 'id_bateau', type: 'integer', example: 1),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Créée'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     #[IsGranted('ROLE_PROPRIETAIRE')]
     public function create(Request $request): JsonResponse
@@ -85,6 +121,16 @@ class DisponibiliteController extends AbstractController
         return $this->json($dispo, Response::HTTP_CREATED, [], ['groups' => ['disponibilite:read']]);
     }
 
+    #[OA\Put(
+        path: '/api/disponibilites/{id}',
+        summary: 'Modifier une disponibilité (propriétaire du bateau ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Mise à jour réussie'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
@@ -109,6 +155,16 @@ class DisponibiliteController extends AbstractController
         return $this->json($dispo, Response::HTTP_OK, [], ['groups' => ['disponibilite:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/disponibilites/{id}',
+        summary: 'Supprimer une disponibilité (propriétaire du bateau ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimée'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {

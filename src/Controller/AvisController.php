@@ -7,6 +7,7 @@ use App\Repository\AvisRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Avis')]
 #[Route('/api/avis', name: 'api_avis_')]
 class AvisController extends AbstractController
 {
@@ -25,12 +27,26 @@ class AvisController extends AbstractController
         private readonly ValidatorInterface $validator,
     ) {}
 
+    #[OA\Get(
+        path: '/api/avis',
+        summary: 'Lister tous les avis',
+        responses: [new OA\Response(response: 200, description: 'Liste des avis')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['avis:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/avis/{id}',
+        summary: 'Détail d\'un avis',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Avis trouvé'),
+            new OA\Response(response: 404, description: 'Avis non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -43,6 +59,26 @@ class AvisController extends AbstractController
         return $this->json($avis, Response::HTTP_OK, [], ['groups' => ['avis:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/avis',
+        summary: 'Créer un avis',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['note', 'commentaire', 'id_reservation', 'id_utilisateur'],
+                properties: [
+                    new OA\Property(property: 'note', type: 'integer', minimum: 1, maximum: 5, example: 4),
+                    new OA\Property(property: 'commentaire', type: 'string', example: 'Excellent bateau !'),
+                    new OA\Property(property: 'id_reservation', type: 'integer', example: 1),
+                    new OA\Property(property: 'id_utilisateur', type: 'integer', example: 2),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Avis créé'),
+            new OA\Response(response: 400, description: 'Données invalides'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -82,6 +118,15 @@ class AvisController extends AbstractController
         return $this->json($avis, Response::HTTP_CREATED, [], ['groups' => ['avis:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/avis/{id}',
+        summary: 'Supprimer un avis',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimé'),
+            new OA\Response(response: 404, description: 'Avis non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {

@@ -8,6 +8,7 @@ use App\Repository\PaiementRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\StatutPaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Paiements')]
 #[Route('/api/paiements', name: 'api_paiements_')]
 class PaiementController extends AbstractController
 {
@@ -27,12 +29,26 @@ class PaiementController extends AbstractController
         private readonly ValidatorInterface $validator,
     ) {}
 
+    #[OA\Get(
+        path: '/api/paiements',
+        summary: 'Lister tous les paiements',
+        responses: [new OA\Response(response: 200, description: 'Liste des paiements')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['paiement:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/paiements/{id}',
+        summary: 'Détail d\'un paiement',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Paiement trouvé'),
+            new OA\Response(response: 404, description: 'Paiement non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -45,6 +61,28 @@ class PaiementController extends AbstractController
         return $this->json($paiement, Response::HTTP_OK, [], ['groups' => ['paiement:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/paiements',
+        summary: 'Enregistrer un paiement',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['montant', 'id_reservation', 'id_statut_paiement', 'id_mode_paiement'],
+                properties: [
+                    new OA\Property(property: 'montant', type: 'number', example: 875),
+                    new OA\Property(property: 'id_reservation', type: 'integer', example: 1),
+                    new OA\Property(property: 'id_statut_paiement', type: 'integer', example: 1),
+                    new OA\Property(property: 'id_mode_paiement', type: 'integer', example: 1),
+                    new OA\Property(property: 'statut_paiement', type: 'string', example: 'en_attente', nullable: true),
+                    new OA\Property(property: 'date_paiement', type: 'string', format: 'date', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Paiement créé'),
+            new OA\Response(response: 400, description: 'Données invalides'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -90,6 +128,15 @@ class PaiementController extends AbstractController
         return $this->json($paiement, Response::HTTP_CREATED, [], ['groups' => ['paiement:read']]);
     }
 
+    #[OA\Put(
+        path: '/api/paiements/{id}',
+        summary: 'Modifier un paiement',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Mise à jour réussie'),
+            new OA\Response(response: 404, description: 'Paiement non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
@@ -121,6 +168,15 @@ class PaiementController extends AbstractController
         return $this->json($paiement, Response::HTTP_OK, [], ['groups' => ['paiement:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/paiements/{id}',
+        summary: 'Supprimer un paiement',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimé'),
+            new OA\Response(response: 404, description: 'Paiement non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {

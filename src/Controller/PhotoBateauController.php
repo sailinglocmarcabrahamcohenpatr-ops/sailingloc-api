@@ -6,6 +6,7 @@ use App\Entity\PhotoBateau;
 use App\Repository\BateauRepository;
 use App\Repository\PhotoBateauRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -16,6 +17,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\String\Slugger\SluggerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Photos de bateaux')]
 #[Route('/api/photos', name: 'api_photos_')]
 class PhotoBateauController extends AbstractController
 {
@@ -29,12 +31,26 @@ class PhotoBateauController extends AbstractController
         #[Autowire('%upload_base_url%')] private readonly string $uploadBaseUrl,
     ) {}
 
+    #[OA\Get(
+        path: '/api/photos',
+        summary: 'Lister toutes les photos',
+        responses: [new OA\Response(response: 200, description: 'Liste des photos')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['photo:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/photos/{id}',
+        summary: 'Détail d\'une photo',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Photo trouvée'),
+            new OA\Response(response: 404, description: 'Photo non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -47,6 +63,30 @@ class PhotoBateauController extends AbstractController
         return $this->json($photo, Response::HTTP_OK, [], ['groups' => ['photo:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/photos',
+        summary: 'Uploader une photo de bateau (PROPRIETAIRE, multipart/form-data)',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: 'multipart/form-data',
+                schema: new OA\Schema(
+                    required: ['id_bateau', 'photo'],
+                    properties: [
+                        new OA\Property(property: 'id_bateau', type: 'integer', example: 1),
+                        new OA\Property(property: 'photo', type: 'string', format: 'binary'),
+                        new OA\Property(property: 'description', type: 'string', nullable: true),
+                        new OA\Property(property: 'ordre_affichage', type: 'integer', nullable: true),
+                    ]
+                )
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Photo uploadée'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 422, description: 'Type ou taille invalide'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     #[IsGranted('ROLE_PROPRIETAIRE')]
     public function create(Request $request): JsonResponse
@@ -95,6 +135,16 @@ class PhotoBateauController extends AbstractController
         return $this->json($photo, Response::HTTP_CREATED, [], ['groups' => ['photo:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/photos/{id}',
+        summary: 'Supprimer une photo (propriétaire du bateau ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimée'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Photo non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {

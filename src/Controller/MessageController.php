@@ -6,6 +6,7 @@ use App\Entity\Message;
 use App\Repository\MessageRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,6 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Messages')]
 #[Route('/api/messages', name: 'api_messages_')]
 class MessageController extends AbstractController
 {
@@ -23,6 +25,15 @@ class MessageController extends AbstractController
         private readonly ValidatorInterface $validator,
     ) {}
 
+    #[OA\Get(
+        path: '/api/messages',
+        summary: 'Lister les messages (filtrables par expéditeur/destinataire)',
+        parameters: [
+            new OA\Parameter(name: 'expediteur', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'destinataire', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Liste des messages')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -38,6 +49,15 @@ class MessageController extends AbstractController
         return $this->json($messages, Response::HTTP_OK, [], ['groups' => ['message:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/messages/{id}',
+        summary: 'Détail d\'un message',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Message trouvé'),
+            new OA\Response(response: 404, description: 'Message non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -50,6 +70,25 @@ class MessageController extends AbstractController
         return $this->json($message, Response::HTTP_OK, [], ['groups' => ['message:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/messages',
+        summary: 'Envoyer un message',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['contenu', 'id_utilisateur', 'id_utilisateur_1'],
+                properties: [
+                    new OA\Property(property: 'contenu', type: 'string', example: 'Bonjour, le bateau est-il disponible ?'),
+                    new OA\Property(property: 'id_utilisateur', type: 'integer', description: 'ID de l\'expéditeur', example: 1),
+                    new OA\Property(property: 'id_utilisateur_1', type: 'integer', description: 'ID du destinataire', example: 2),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Message envoyé'),
+            new OA\Response(response: 400, description: 'Données invalides'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -88,6 +127,15 @@ class MessageController extends AbstractController
         return $this->json($message, Response::HTTP_CREATED, [], ['groups' => ['message:read']]);
     }
 
+    #[OA\Patch(
+        path: '/api/messages/{id}/lu',
+        summary: 'Marquer un message comme lu',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Message marqué comme lu'),
+            new OA\Response(response: 404, description: 'Message non trouvé'),
+        ]
+    )]
     #[Route('/{id}/lu', name: 'marquer_lu', methods: ['PATCH'])]
     public function marquerLu(int $id): JsonResponse
     {
@@ -103,6 +151,15 @@ class MessageController extends AbstractController
         return $this->json($message, Response::HTTP_OK, [], ['groups' => ['message:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/messages/{id}',
+        summary: 'Supprimer un message',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimé'),
+            new OA\Response(response: 404, description: 'Message non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {

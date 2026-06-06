@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Port;
 use App\Repository\PortRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,6 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Ports')]
 #[Route('/api/ports', name: 'api_ports_')]
 class PortController extends AbstractController
 {
@@ -22,12 +24,26 @@ class PortController extends AbstractController
         private readonly ValidatorInterface $validator,
     ) {}
 
+    #[OA\Get(
+        path: '/api/ports',
+        summary: 'Lister tous les ports',
+        responses: [new OA\Response(response: 200, description: 'Liste des ports')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(): JsonResponse
     {
         return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['port:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/ports/{id}',
+        summary: 'Détail d\'un port',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Port trouvé'),
+            new OA\Response(response: 404, description: 'Port non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -40,6 +56,28 @@ class PortController extends AbstractController
         return $this->json($port, Response::HTTP_OK, [], ['groups' => ['port:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/ports',
+        summary: 'Créer un port (PROPRIETAIRE)',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['nom', 'pays', 'ville'],
+                properties: [
+                    new OA\Property(property: 'nom', type: 'string', example: 'Port de Marseille'),
+                    new OA\Property(property: 'pays', type: 'string', example: 'France'),
+                    new OA\Property(property: 'ville', type: 'string', example: 'Marseille'),
+                    new OA\Property(property: 'code_postal', type: 'string', example: '13001', nullable: true),
+                    new OA\Property(property: 'latitude', type: 'number', format: 'float', example: 43.2965, nullable: true),
+                    new OA\Property(property: 'longitude', type: 'number', format: 'float', example: 5.3698, nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Port créé'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     #[IsGranted('ROLE_PROPRIETAIRE')]
     public function create(Request $request): JsonResponse
@@ -78,6 +116,16 @@ class PortController extends AbstractController
         return $this->json($port, Response::HTTP_CREATED, [], ['groups' => ['port:read']]);
     }
 
+    #[OA\Put(
+        path: '/api/ports/{id}',
+        summary: 'Modifier un port (ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Port mis à jour'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Port non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
     #[IsGranted('ROLE_ADMIN')]
     public function update(int $id, Request $request): JsonResponse
@@ -107,6 +155,16 @@ class PortController extends AbstractController
         return $this->json($port, Response::HTTP_OK, [], ['groups' => ['port:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/ports/{id}',
+        summary: 'Supprimer un port (ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimé'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Port non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN')]
     public function delete(int $id): JsonResponse

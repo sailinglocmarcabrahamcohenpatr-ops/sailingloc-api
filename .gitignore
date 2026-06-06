@@ -34,3 +34,8 @@ Thumbs.db
 ###> composer ###
 /composer.lock
 ###< composer ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

@@ -1,0 +1,28 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: SailingLoc API
+            description: |
+                API REST pour la plateforme de location de bateaux SailingLoc.
+
+                ## Authentification
+                Toutes les routes (sauf `/api/auth/login` et `/api/auth/register`) nécessitent un JWT Bearer token.
+
+                Obtenez un token via `POST /api/auth/login`, puis incluez-le dans chaque requête :
+                ```
+                Authorization: Bearer <votre_token>
+                ```
+            version: 1.0.0
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+        security:
+            - Bearer: []
+    areas:
+        default:
+            path_patterns:
+                - ^/api
+            host_patterns: []

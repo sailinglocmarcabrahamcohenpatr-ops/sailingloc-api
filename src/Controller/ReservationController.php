@@ -13,10 +13,12 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use OpenApi\Attributes as OA;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Réservations')]
 #[Route('/api/reservations', name: 'api_reservations_')]
 class ReservationController extends AbstractController
 {
@@ -30,6 +32,15 @@ class ReservationController extends AbstractController
         private readonly ValidatorInterface $validator,
     ) {}
 
+    #[OA\Get(
+        path: '/api/reservations',
+        summary: 'Lister les réservations (filtrées par utilisateur courant si non-admin)',
+        parameters: [
+            new OA\Parameter(name: 'utilisateur', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'bateau', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Liste des réservations')]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
@@ -52,6 +63,16 @@ class ReservationController extends AbstractController
         return $this->json($reservations, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/reservations/{id}',
+        summary: 'Détail d\'une réservation (propriétaire ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Réservation trouvée'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -68,6 +89,29 @@ class ReservationController extends AbstractController
         return $this->json($reservation, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/reservations',
+        summary: 'Créer une réservation',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['date_debut', 'date_fin', 'montant_total', 'id_bateau', 'id_utilisateur', 'id_contrat', 'id_statut_reservation'],
+                properties: [
+                    new OA\Property(property: 'date_debut', type: 'string', format: 'date', example: '2026-07-01'),
+                    new OA\Property(property: 'date_fin', type: 'string', format: 'date', example: '2026-07-07'),
+                    new OA\Property(property: 'montant_total', type: 'number', example: 1750),
+                    new OA\Property(property: 'id_bateau', type: 'integer', example: 1),
+                    new OA\Property(property: 'id_utilisateur', type: 'integer', example: 2),
+                    new OA\Property(property: 'id_contrat', type: 'integer', example: 1),
+                    new OA\Property(property: 'id_statut_reservation', type: 'integer', example: 1),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Réservation créée'),
+            new OA\Response(response: 400, description: 'Données invalides'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
@@ -112,6 +156,16 @@ class ReservationController extends AbstractController
         return $this->json($reservation, Response::HTTP_CREATED, [], ['groups' => ['reservation:read']]);
     }
 
+    #[OA\Put(
+        path: '/api/reservations/{id}',
+        summary: 'Modifier une réservation (propriétaire ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Mise à jour réussie'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
@@ -147,6 +201,16 @@ class ReservationController extends AbstractController
         return $this->json($reservation, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/reservations/{id}',
+        summary: 'Annuler une réservation (propriétaire ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimée'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Non trouvée'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {

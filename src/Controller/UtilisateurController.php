@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Utilisateur;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +16,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+#[OA\Tag(name: 'Utilisateurs')]
 #[Route('/api/utilisateurs', name: 'api_utilisateurs_')]
 class UtilisateurController extends AbstractController
 {
@@ -26,6 +28,14 @@ class UtilisateurController extends AbstractController
         private readonly UserPasswordHasherInterface $hasher,
     ) {}
 
+    #[OA\Get(
+        path: '/api/utilisateurs',
+        summary: 'Lister tous les utilisateurs (ADMIN)',
+        responses: [
+            new OA\Response(response: 200, description: 'Liste des utilisateurs'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+        ]
+    )]
     #[Route('', name: 'list', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
     public function list(): JsonResponse
@@ -35,6 +45,17 @@ class UtilisateurController extends AbstractController
         return $this->json($utilisateurs, Response::HTTP_OK, [], ['groups' => ['utilisateur:read']]);
     }
 
+    #[OA\Get(
+        path: '/api/utilisateurs/{id}',
+        summary: 'Voir le profil d\'un utilisateur',
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Profil de l\'utilisateur'),
+            new OA\Response(response: 404, description: 'Utilisateur non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'show', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
@@ -44,13 +65,32 @@ class UtilisateurController extends AbstractController
             return $this->json(['message' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
         }
 
-        if (!$this->isGranted('ROLE_ADMIN') && $this->getUser() !== $utilisateur) {
-            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
-        }
-
         return $this->json($utilisateur, Response::HTTP_OK, [], ['groups' => ['utilisateur:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/utilisateurs',
+        summary: 'Créer un utilisateur (ADMIN)',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['nom', 'prenom', 'email', 'password'],
+                properties: [
+                    new OA\Property(property: 'nom', type: 'string', example: 'Dupont'),
+                    new OA\Property(property: 'prenom', type: 'string', example: 'Jean'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'jean@example.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'secret123'),
+                    new OA\Property(property: 'telephone', type: 'string', example: '+33612345678', nullable: true),
+                    new OA\Property(property: 'statut_compte', type: 'string', example: 'actif', enum: ['actif', 'inactif', 'banni'], nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 201, description: 'Utilisateur créé'),
+            new OA\Response(response: 400, description: 'Données invalides'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+        ]
+    )]
     #[Route('', name: 'create', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
     public function create(Request $request): JsonResponse
@@ -86,6 +126,30 @@ class UtilisateurController extends AbstractController
         return $this->json($utilisateur, Response::HTTP_CREATED, [], ['groups' => ['utilisateur:read']]);
     }
 
+    #[OA\Put(
+        path: '/api/utilisateurs/{id}',
+        summary: 'Modifier un utilisateur (propriétaire ou ADMIN)',
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'nom', type: 'string', example: 'Dupont'),
+                    new OA\Property(property: 'prenom', type: 'string', example: 'Jean'),
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'jean@example.com'),
+                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'nouveauSecret'),
+                    new OA\Property(property: 'telephone', type: 'string', example: '+33612345678', nullable: true),
+                    new OA\Property(property: 'statut_compte', type: 'string', example: 'actif', nullable: true),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Utilisateur mis à jour'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Utilisateur non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
@@ -118,6 +182,18 @@ class UtilisateurController extends AbstractController
         return $this->json($utilisateur, Response::HTTP_OK, [], ['groups' => ['utilisateur:read']]);
     }
 
+    #[OA\Delete(
+        path: '/api/utilisateurs/{id}',
+        summary: 'Supprimer un utilisateur (ADMIN)',
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 204, description: 'Supprimé avec succès'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Utilisateur non trouvé'),
+        ]
+    )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN')]
     public function delete(int $id): JsonResponse
@@ -134,3 +210,4 @@ class UtilisateurController extends AbstractController
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
 }
+
