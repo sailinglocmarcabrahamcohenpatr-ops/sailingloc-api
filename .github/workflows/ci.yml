@@ -20,23 +20,27 @@ jobs:
           openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem -passin pass:${{ secrets.JWT_PASSPHRASE }}
 
       - name: Démarrer les conteneurs
-        run: docker compose up -d --build
+        run: docker compose -f compose.yaml up -d --build
+        env:
+          APP_SECRET: ci_secret_not_used_in_tests
+          POSTGRES_PASSWORD: sailingloc_password
+          JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
 
       - name: Attendre que la base soit prête
         run: |
-          until docker compose exec -T database pg_isready -U sailingloc; do
+          until docker compose -f compose.yaml exec -T database pg_isready -U sailingloc; do
             sleep 1
           done
 
       - name: Créer la base de test et migrer
         run: |
-          docker compose exec -T database psql -U sailingloc -d postgres -c "CREATE DATABASE sailingloc_test;" || true
-          docker compose exec -T -e APP_ENV=test -e JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }} app php bin/console doctrine:migrations:migrate --no-interaction
+          docker compose -f compose.yaml exec -T database psql -U sailingloc -d postgres -c "CREATE DATABASE sailingloc_test;" || true
+          docker compose -f compose.yaml exec -T -e APP_ENV=test -e JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }} app php bin/console doctrine:migrations:migrate --no-interaction
 
       - name: Lancer les tests
         run: |
-          docker compose exec -T -e APP_ENV=test -e JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }} app php bin/phpunit --testdox
+          docker compose -f compose.yaml exec -T -e APP_ENV=test -e JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }} app php bin/phpunit --testdox
 
       - name: Arrêter les conteneurs
         if: always()
-        run: docker compose down -v
+        run: docker compose -f compose.yaml down -v
