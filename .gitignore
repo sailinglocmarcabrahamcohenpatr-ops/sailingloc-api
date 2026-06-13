@@ -3,8 +3,6 @@
 /.env.local
 /.env.local.php
 /.env.*.local
-/.env
-/.env.dev
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
 /var/
@@ -31,8 +29,6 @@
 Thumbs.db
 ###< OS ###
 
-###> composer ###
-/composer.lock
 ###< composer ###
 
 ###> phpunit/phpunit ###

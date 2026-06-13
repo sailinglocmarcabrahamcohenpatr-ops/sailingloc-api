@@ -10,6 +10,10 @@ services:
     environment:
       APP_ENV: dev
       APP_DEBUG: 1
+      # En dev, les clés JWT viennent du dossier local via le volume monté ci-dessus.
+      # JWT_SECRET_KEY/JWT_PUBLIC_KEY utilisent %kernel.project_dir% défini dans .env.
+      JWT_SECRET_KEY: /var/www/html/config/jwt/private.pem
+      JWT_PUBLIC_KEY: /var/www/html/config/jwt/public.pem
 
   nginx:
     ports:
