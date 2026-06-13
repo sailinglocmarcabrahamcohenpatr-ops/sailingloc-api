@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Générer les clés JWT de test
+        run: |
+          mkdir -p config/jwt
+          openssl genpkey -algorithm RSA -out config/jwt/private.pem -aes256 -pass pass:${{ secrets.JWT_PASSPHRASE }}
+          openssl rsa -pubout -in config/jwt/private.pem -out config/jwt/public.pem -passin pass:${{ secrets.JWT_PASSPHRASE }}
+
+      - name: Démarrer les conteneurs
+        run: docker compose up -d --build
+
+      - name: Attendre que la base soit prête
+        run: |
+          until docker compose exec -T database pg_isready -U sailingloc; do
+            sleep 1
+          done
+
+      - name: Créer la base de test et migrer
+        run: |
+          docker compose exec -T database psql -U sailingloc -d postgres -c "CREATE DATABASE sailingloc_test;" || true
+          docker compose exec -T -e APP_ENV=test -e JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }} app php bin/console doctrine:migrations:migrate --no-interaction
+
+      - name: Lancer les tests
+        run: |
+          docker compose exec -T -e APP_ENV=test -e JWT_PASSPHRASE=${{ secrets.JWT_PASSPHRASE }} app php bin/phpunit --testdox
+
+      - name: Arrêter les conteneurs
+        if: always()
+        run: docker compose down -v
