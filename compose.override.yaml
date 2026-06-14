@@ -16,8 +16,6 @@ services:
       JWT_PUBLIC_KEY: /var/www/html/config/jwt/public.pem
 
   nginx:
-    ports:
-      - "8080:80"
     depends_on:
       - app
   database:
