@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmez votre compte SailingLoc</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f7fb; margin: 0; padding: 0; }
+        .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .header { background-color: #0a4d8c; padding: 32px 40px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 1px; }
+        .body { padding: 40px; color: #333333; line-height: 1.6; }
+        .body p { margin: 0 0 16px; }
+        .btn-wrapper { text-align: center; margin: 32px 0; }
+        .btn { display: inline-block; background-color: #0a4d8c; color: #ffffff !important; text-decoration: none; padding: 14px 36px; border-radius: 6px; font-size: 16px; font-weight: bold; }
+        .fallback { font-size: 13px; color: #888888; word-break: break-all; }
+        .footer { background-color: #f4f7fb; padding: 20px 40px; text-align: center; font-size: 12px; color: #aaaaaa; }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+    <div class="header">
+        <h1>⚓ SailingLoc</h1>
+    </div>
+    <div class="body">
+        <p>Bonjour {{ prenom }},</p>
+        <p>Merci de vous être inscrit sur <strong>SailingLoc</strong> ! Pour activer votre compte, veuillez cliquer sur le bouton ci-dessous :</p>
+        <div class="btn-wrapper">
+            <a href="{{ confirmUrl }}" class="btn">Confirmer mon adresse email</a>
+        </div>
+        <p>Ce lien est valable une seule fois. Si vous n'avez pas créé de compte sur SailingLoc, ignorez simplement cet email.</p>
+        <p class="fallback">Si le bouton ne fonctionne pas, copiez-collez ce lien dans votre navigateur :<br>{{ confirmUrl }}</p>
+    </div>
+    <div class="footer">
+        &copy; {{ "now"|date("Y") }} SailingLoc — Tous droits réservés
+    </div>
+</div>
+</body>
+</html>

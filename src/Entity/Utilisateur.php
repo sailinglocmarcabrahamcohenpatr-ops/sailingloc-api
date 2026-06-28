@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Enum\RoleEnum;
+use App\Enum\StatutCompteEnum;
 use App\Repository\UtilisateurRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -49,6 +50,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['utilisateur:read'])]
     private ?string $statutCompte = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $tokenConfirmation = null;
+
     #[ORM\OneToMany(targetEntity: Bateau::class, mappedBy: 'proprietaire')]
     private Collection $bateaux;
 
@@ -80,6 +84,7 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->bateaux = new ArrayCollection();
         $this->roles = [RoleEnum::USER->value];
+        $this->statutCompte = StatutCompteEnum::INACTIF->value;
         $this->documents = new ArrayCollection();
         $this->bateauxFavoris = new ArrayCollection();
         $this->messagesEnvoyes = new ArrayCollection();
@@ -303,4 +308,16 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     public function eraseCredentials(): void {}
+
+    public function getTokenConfirmation(): ?string
+    {
+        return $this->tokenConfirmation;
+    }
+
+    public function setTokenConfirmation(?string $tokenConfirmation): static
+    {
+        $this->tokenConfirmation = $tokenConfirmation;
+
+        return $this;
+    }
 }

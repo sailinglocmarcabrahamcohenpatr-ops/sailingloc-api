@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Utilisateur;
+use App\Enum\StatutCompteEnum;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Nelmio\ApiDocBundle\Attribute\Security;
@@ -11,8 +12,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -71,7 +75,7 @@ class AuthController extends AbstractController
             )
         ),
         responses: [
-            new OA\Response(response: 201, description: 'Compte créé avec succès'),
+            new OA\Response(response: 201, description: 'Compte créé — un email de confirmation a été envoyé'),
             new OA\Response(response: 400, description: 'Données invalides'),
             new OA\Response(response: 409, description: 'Email déjà utilisé'),
         ]
@@ -84,6 +88,8 @@ class AuthController extends AbstractController
         UserPasswordHasherInterface $hasher,
         UtilisateurRepository $utilisateurRepository,
         ValidatorInterface $validator,
+        MailerInterface $mailer,
+        UrlGeneratorInterface $urlGenerator,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
@@ -108,11 +114,14 @@ class AuthController extends AbstractController
             return $this->json(['error' => 'Email invalide'], Response::HTTP_BAD_REQUEST);
         }
 
+        $token = bin2hex(random_bytes(32));
+
         $utilisateur = new Utilisateur();
         $utilisateur->setNom($data['nom']);
         $utilisateur->setPrenom($data['prenom']);
         $utilisateur->setEmail($data['email']);
         $utilisateur->setTelephone($data['telephone'] ?? null);
+        $utilisateur->setTokenConfirmation($token);
 
         $hashedPassword = $hasher->hashPassword($utilisateur, $data['password']);
         $utilisateur->setPassword($hashedPassword);
@@ -120,10 +129,58 @@ class AuthController extends AbstractController
         $em->persist($utilisateur);
         $em->flush();
 
+        $confirmUrl = $urlGenerator->generate(
+            'api_auth_confirm',
+            ['token' => $token],
+            UrlGeneratorInterface::ABSOLUTE_URL
+        );
+
+        $email = (new Email())
+            ->to($utilisateur->getEmail())
+            ->subject('Confirmez votre compte SailingLoc')
+            ->html($this->renderView('emails/confirmation.html.twig', [
+                'prenom'      => $utilisateur->getPrenom(),
+                'confirmUrl'  => $confirmUrl,
+            ]));
+
+        $mailer->send($email);
+
         return $this->json([
-            'message' => 'Compte créé avec succès',
+            'message' => 'Compte créé avec succès. Veuillez vérifier vos emails pour activer votre compte.',
             'id'      => $utilisateur->getId(),
             'email'   => $utilisateur->getEmail(),
         ], Response::HTTP_CREATED);
+    }
+
+    #[OA\Get(
+        path: '/api/auth/confirm/{token}',
+        summary: 'Confirmer l\'adresse email et activer le compte',
+        parameters: [
+            new OA\Parameter(name: 'token', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Compte activé avec succès'),
+            new OA\Response(response: 404, description: 'Token invalide ou expiré'),
+        ]
+    )]
+    #[Security(name: null)]
+    #[Route('/confirm/{token}', name: 'confirm', methods: ['GET'])]
+    public function confirm(
+        string $token,
+        UtilisateurRepository $utilisateurRepository,
+        EntityManagerInterface $em,
+    ): JsonResponse {
+        $utilisateur = $utilisateurRepository->findOneBy(['tokenConfirmation' => $token]);
+
+        if (!$utilisateur) {
+            return $this->json(['error' => 'Token invalide ou expiré.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $utilisateur->setStatutCompte(StatutCompteEnum::ACTIF->value);
+        $utilisateur->setTokenConfirmation(null);
+
+        $em->flush();
+
+        return $this->json(['message' => 'Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter.']);
     }
 }
