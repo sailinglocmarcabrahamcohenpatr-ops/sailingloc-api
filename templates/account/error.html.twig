@@ -5,31 +5,99 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lien invalide — SailingLoc</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background-color: #f4f7fb; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .card { background: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 480px; width: 100%; margin: 24px; text-align: center; overflow: hidden; }
-        .header { background-color: #0a4d8c; padding: 32px 40px; }
-        .header h1 { color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px; }
-        .body { padding: 48px 40px 40px; }
-        .icon { font-size: 64px; margin-bottom: 16px; }
-        h2 { color: #1a1a1a; margin: 0 0 12px; font-size: 22px; }
-        p { color: #555555; line-height: 1.6; margin: 0 0 32px; font-size: 15px; }
-        .footer { padding: 20px 40px; font-size: 12px; color: #aaaaaa; border-top: 1px solid #f0f0f0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .brand {
+            color: rgba(255,255,255,0.9);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            max-width: 500px;
+            width: 100%;
+            padding: 48px 40px 36px;
+            text-align: center;
+        }
+        .badge {
+            width: 80px;
+            height: 80px;
+            background: #fee2e2;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 28px;
+            box-shadow: 0 4px 16px rgba(239,68,68,0.3);
+        }
+        .badge svg { width: 38px; height: 38px; }
+        h1 { color: #111827; font-size: 26px; font-weight: 800; margin-bottom: 10px; }
+        .subtitle { color: #6b7280; font-size: 15px; line-height: 1.5; margin-bottom: 28px; }
+        .info-card {
+            background: #fff7f7;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 18px 24px;
+            margin-bottom: 8px;
+            text-align: left;
+            font-size: 14px;
+            color: #374151;
+            line-height: 1.6;
+        }
+        .footer {
+            margin-top: 28px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .footer-dot {
+            width: 8px; height: 8px;
+            background: #fca5a5;
+            border-radius: 50%;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
-<div class="card">
-    <div class="header">
-        <h1>⚓ SailingLoc</h1>
-    </div>
-    <div class="body">
-        <div class="icon">❌</div>
-        <h2>Lien invalide ou expiré</h2>
-        <p>Ce lien de confirmation n'est pas valide ou a déjà été utilisé.<br>Si vous avez besoin d'aide, contactez le support SailingLoc.</p>
+    <div class="brand">⚓ SailingLoc</div>
+    <div class="card">
+        <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+            </svg>
+        </div>
+        <h1>Lien invalide ou expiré</h1>
+        <p class="subtitle">Ce lien de confirmation n'est pas valide<br>ou a déjà été utilisé.</p>
+        <div class="info-card">
+            <strong>Que faire ?</strong><br>
+            Si vous venez de créer votre compte, vérifiez votre boîte mail et utilisez le lien le plus récent reçu de SailingLoc.<br><br>
+            Si le problème persiste, contactez le support à <strong>support@sailingloc.fr</strong>.
+        </div>
     </div>
     <div class="footer">
+        <span class="footer-dot"></span>
         &copy; {{ "now"|date("Y") }} SailingLoc — Tous droits réservés
     </div>
-</div>
 </body>
 </html>

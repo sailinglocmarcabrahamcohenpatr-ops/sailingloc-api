@@ -5,34 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compte activé — SailingLoc</title>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background-color: #f4f7fb; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
-        .card { background: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 480px; width: 100%; margin: 24px; text-align: center; overflow: hidden; }
-        .header { background-color: #0a4d8c; padding: 32px 40px; }
-        .header h1 { color: #ffffff; margin: 0; font-size: 22px; letter-spacing: 1px; }
-        .body { padding: 48px 40px 40px; }
-        .icon { font-size: 64px; margin-bottom: 16px; }
-        h2 { color: #1a1a1a; margin: 0 0 12px; font-size: 22px; }
-        p { color: #555555; line-height: 1.6; margin: 0 0 32px; font-size: 15px; }
-        .btn { display: inline-block; background-color: #0a4d8c; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 6px; font-size: 15px; font-weight: bold; }
-        .btn:hover { background-color: #083d72; }
-        .footer { padding: 20px 40px; font-size: 12px; color: #aaaaaa; border-top: 1px solid #f0f0f0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a4d8c 0%, #1a73c8 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .brand {
+            color: rgba(255,255,255,0.9);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            max-width: 500px;
+            width: 100%;
+            padding: 48px 40px 36px;
+            text-align: center;
+        }
+        .badge {
+            width: 80px;
+            height: 80px;
+            background: #fbbf24;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 28px;
+            box-shadow: 0 4px 16px rgba(251,191,36,0.4);
+        }
+        .badge svg { width: 40px; height: 40px; }
+        h1 { color: #111827; font-size: 26px; font-weight: 800; margin-bottom: 10px; }
+        .subtitle { color: #6b7280; font-size: 15px; line-height: 1.5; margin-bottom: 28px; }
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+            text-align: left;
+        }
+        .info-row { display: flex; align-items: center; gap: 10px; color: #374151; font-size: 14px; padding: 6px 0; }
+        .info-row span.label { color: #9ca3af; font-size: 13px; display: block; }
+        .info-row strong { font-size: 14px; }
+        .btn {
+            display: inline-block;
+            background: #0a4d8c;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 14px 40px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #083d72; }
+        .footer {
+            margin-top: 28px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .footer-dot {
+            width: 8px; height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
-<div class="card">
-    <div class="header">
-        <h1>⚓ SailingLoc</h1>
-    </div>
-    <div class="body">
-        <div class="icon">✅</div>
-        <h2>Compte activé !</h2>
-        <p>Votre adresse email a bien été confirmée.<br>Vous pouvez maintenant vous connecter à votre compte SailingLoc.</p>
+    <div class="brand">⚓ SailingLoc</div>
+    <div class="card">
+        <div class="badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#1a3a5c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h1>Compte confirmé !</h1>
+        <p class="subtitle">Votre adresse email a bien été vérifiée.<br>Vous pouvez maintenant accéder à SailingLoc.</p>
+        <div class="info-card">
+            <div class="info-row">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <div>
+                    <span class="label">Statut du compte</span>
+                    <strong>Actif ✓</strong>
+                </div>
+            </div>
+            <div class="info-row" style="border-top: 1px solid #e5e7eb; margin-top: 8px; padding-top: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <div>
+                    <span class="label">Membre depuis</span>
+                    <strong>{{ "now"|date("d/m/Y") }}</strong>
+                </div>
+            </div>
+        </div>
         <a href="{{ loginUrl }}" class="btn">Se connecter</a>
     </div>
     <div class="footer">
-        &copy; {{ "now"|date("Y") }} SailingLoc — Tous droits réservés
+        <span class="footer-dot"></span>
+        Compte activé avec succès &mdash; &copy; {{ "now"|date("Y") }} SailingLoc
     </div>
-</div>
 </body>
 </html>
