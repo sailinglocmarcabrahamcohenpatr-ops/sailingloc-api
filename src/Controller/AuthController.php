@@ -159,7 +159,7 @@ class AuthController extends AbstractController
             new OA\Parameter(name: 'token', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
         ],
         responses: [
-            new OA\Response(response: 200, description: 'Compte activé avec succès'),
+            new OA\Response(response: 200, description: 'Compte activé avec succès — page HTML retournée'),
             new OA\Response(response: 404, description: 'Token invalide ou expiré'),
         ]
     )]
@@ -169,11 +169,13 @@ class AuthController extends AbstractController
         string $token,
         UtilisateurRepository $utilisateurRepository,
         EntityManagerInterface $em,
-    ): JsonResponse {
+        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(env: 'FRONTEND_URL')]
+        string $frontendUrl,
+    ): Response {
         $utilisateur = $utilisateurRepository->findOneBy(['tokenConfirmation' => $token]);
 
         if (!$utilisateur) {
-            return $this->json(['error' => 'Token invalide ou expiré.'], Response::HTTP_NOT_FOUND);
+            return $this->render('account/error.html.twig', [], new Response('', Response::HTTP_NOT_FOUND));
         }
 
         $utilisateur->setStatutCompte(StatutCompteEnum::ACTIF->value);
@@ -181,6 +183,8 @@ class AuthController extends AbstractController
 
         $em->flush();
 
-        return $this->json(['message' => 'Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter.']);
+        return $this->render('account/activated.html.twig', [
+            'loginUrl' => $frontendUrl . '/login',
+        ]);
     }
 }
