@@ -6,6 +6,7 @@ use App\Repository\TypeDocumentRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: TypeDocumentRepository::class)]
 #[ORM\Table(name: 'type_document')]
@@ -14,9 +15,11 @@ class TypeDocument
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['document:read'])]
     private ?int $id = null;
 
     #[ORM\Column(name: 'label_type_document', length: 150)]
+    #[Groups(['document:read'])]
     private string $labelTypeDocument;
 
     #[ORM\OneToMany(targetEntity: Document::class, mappedBy: 'typeDocument')]
