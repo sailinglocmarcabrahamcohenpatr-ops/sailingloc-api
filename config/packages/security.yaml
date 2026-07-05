@@ -36,11 +36,16 @@ security:
             jwt: ~
 
     access_control:
-        - { path: ^/api/auth/login,    roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/register, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/confirm,  roles: PUBLIC_ACCESS }
-        - { path: ^/api/doc,           roles: PUBLIC_ACCESS }
-        - { path: ^/api,               roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/api/auth/login,          roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/register,       roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/confirm,        roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc,                 roles: PUBLIC_ACCESS }
+        # Routes de consultation publiques (lecture seule, sans authentification)
+        - { path: ^/api/bateaux,             roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/ports,               roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/referentiels,        roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api/disponibilites,      roles: PUBLIC_ACCESS, methods: [GET] }
+        - { path: ^/api,                     roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
     security:

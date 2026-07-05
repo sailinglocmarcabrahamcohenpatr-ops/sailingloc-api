@@ -35,21 +35,32 @@ class BateauController extends AbstractController
         summary: 'Lister les bateaux',
         parameters: [
             new OA\Parameter(name: 'statut', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['disponible', 'loué', 'maintenance'])),
+            new OA\Parameter(name: 'page',   in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1)),
+            new OA\Parameter(name: 'limit',  in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20)),
         ],
-        responses: [new OA\Response(response: 200, description: 'Liste des bateaux')]
+        responses: [new OA\Response(response: 200, description: 'Liste paginée des bateaux')]
     )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
         $statut = $request->query->get('statut');
+        $page   = max(1, (int) $request->query->get('page', 1));
+        $limit  = min(100, max(1, (int) $request->query->get('limit', 20)));
+        $offset = ($page - 1) * $limit;
 
-        if ($statut) {
-            $bateaux = $this->repository->findByStatut($statut);
-        } else {
-            $bateaux = $this->repository->findAll();
-        }
+        $criteria = $statut ? ['statut' => $statut] : [];
+        $bateaux  = $this->repository->findBy($criteria, ['nomBateau' => 'ASC'], $limit, $offset);
+        $total    = $this->repository->count($criteria);
 
-        return $this->json($bateaux, Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
+        return $this->json([
+            'data'       => $bateaux,
+            'pagination' => [
+                'page'  => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / max(1, $limit)),
+            ],
+        ], Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
     }
 
     #[OA\Get(

@@ -27,12 +27,31 @@ class PortController extends AbstractController
     #[OA\Get(
         path: '/api/ports',
         summary: 'Lister tous les ports',
-        responses: [new OA\Response(response: 200, description: 'Liste des ports')]
+        parameters: [
+            new OA\Parameter(name: 'page',  in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1)),
+            new OA\Parameter(name: 'limit', in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20)),
+        ],
+        responses: [new OA\Response(response: 200, description: 'Liste paginée des ports')]
     )]
     #[Route('', name: 'list', methods: ['GET'])]
-    public function list(): JsonResponse
+    public function list(Request $request): JsonResponse
     {
-        return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['port:read']]);
+        $page   = max(1, (int) $request->query->get('page', 1));
+        $limit  = min(100, max(1, (int) $request->query->get('limit', 20)));
+        $offset = ($page - 1) * $limit;
+
+        $ports = $this->repository->findBy([], ['nom' => 'ASC'], $limit, $offset);
+        $total = $this->repository->count([]);
+
+        return $this->json([
+            'data'       => $ports,
+            'pagination' => [
+                'page'  => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'pages' => (int) ceil($total / max(1, $limit)),
+            ],
+        ], Response::HTTP_OK, [], ['groups' => ['port:read']]);
     }
 
     #[OA\Get(
