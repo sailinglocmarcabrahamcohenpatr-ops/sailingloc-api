@@ -35,31 +35,30 @@ class BateauController extends AbstractController
         path: '/api/bateaux',
         summary: 'Lister les bateaux',
         parameters: [
-            new OA\Parameter(name: 'statut', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['disponible', 'loué', 'maintenance'])),
-            new OA\Parameter(name: 'page',   in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1)),
-            new OA\Parameter(name: 'limit',  in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20)),
+            new OA\Parameter(name: 'statut',          in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['disponible', 'loué', 'maintenance', 'en attente de validation'])),
+            new OA\Parameter(name: 'proprietaire_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer'), description: 'Filtrer par propriétaire'),
+            new OA\Parameter(name: 'page',            in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 1)),
+            new OA\Parameter(name: 'limit',           in: 'query', required: false, schema: new OA\Schema(type: 'integer', default: 20)),
         ],
         responses: [new OA\Response(response: 200, description: 'Liste paginée des bateaux')]
     )]
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $statut = $request->query->get('statut');
-        $page   = max(1, (int) $request->query->get('page', 1));
-        $limit  = min(100, max(1, (int) $request->query->get('limit', 20)));
-        $offset = ($page - 1) * $limit;
+        $statut         = $request->query->get('statut');
+        $proprietaireId = $request->query->get('proprietaire_id') ? (int) $request->query->get('proprietaire_id') : null;
+        $page           = max(1, (int) $request->query->get('page', 1));
+        $limit          = min(100, max(1, (int) $request->query->get('limit', 20)));
 
-        $criteria = $statut ? ['statut' => $statut] : [];
-        $bateaux  = $this->repository->findBy($criteria, ['nomBateau' => 'ASC'], $limit, $offset);
-        $total    = $this->repository->count($criteria);
+        $result = $this->repository->findPaginated($page, $limit, $statut, $proprietaireId);
 
         return $this->json([
-            'data'       => $bateaux,
+            'data'       => $result['items'],
             'pagination' => [
                 'page'  => $page,
                 'limit' => $limit,
-                'total' => $total,
-                'pages' => (int) ceil($total / max(1, $limit)),
+                'total' => $result['total'],
+                'pages' => (int) ceil($result['total'] / max(1, $limit)),
             ],
         ], Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
     }
@@ -148,7 +147,7 @@ class BateauController extends AbstractController
         $bateau->setTaille($data['taille'] ?? '');
         $bateau->setAvecSkipper((bool) ($data['avec_skipper'] ?? false));
         $bateau->setDescription($data['description'] ?? null);
-        $bateau->setStatut(StatutBateauEnum::from($data['statut'] ?? StatutBateauEnum::DISPONIBLE->value));
+        $bateau->setStatut(StatutBateauEnum::from($data['statut'] ?? StatutBateauEnum::INDISPONIBLE->value));
         $bateau->setPrixJour((string) ($data['prix_jour'] ?? '0'));
         $bateau->setPrixHeure(isset($data['prix_heure']) ? (string) $data['prix_heure'] : null);
         $bateau->setPermisRequis((bool) ($data['permis_requis'] ?? false));
