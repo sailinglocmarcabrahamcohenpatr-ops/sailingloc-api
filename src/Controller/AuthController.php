@@ -212,8 +212,9 @@ class AuthController extends AbstractController
         UtilisateurRepository $utilisateurRepository,
         EntityManagerInterface $em,
         MailerInterface $mailer,
-        UrlGeneratorInterface $urlGenerator,
         ValidatorInterface $validator,
+        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(env: 'FRONTEND_URL')]
+        string $frontendUrl,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
@@ -235,11 +236,7 @@ class AuthController extends AbstractController
             $utilisateur->setTokenResetPasswordExpiresAt(new \DateTime('+1 hour'));
             $em->flush();
 
-            $resetUrl = $urlGenerator->generate(
-                'api_auth_reset_password',
-                ['token' => $token],
-                UrlGeneratorInterface::ABSOLUTE_URL
-            );
+            $resetUrl = $frontendUrl . '/reset-password?token=' . $token;
 
             $email = (new Email())
                 ->to($utilisateur->getEmail())
