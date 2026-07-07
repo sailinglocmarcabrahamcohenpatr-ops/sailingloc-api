@@ -187,4 +187,126 @@ class AuthController extends AbstractController
             'loginUrl' => $frontendUrl . '/login',
         ]);
     }
+
+    #[OA\Post(
+        path: '/api/auth/forgot-password',
+        summary: 'Demander un lien de réinitialisation de mot de passe',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['email'],
+                properties: [
+                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'user@example.com'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Email envoyé si le compte existe'),
+            new OA\Response(response: 400, description: 'Email manquant ou invalide'),
+        ]
+    )]
+    #[Security(name: null)]
+    #[Route('/forgot-password', name: 'forgot_password', methods: ['POST'])]
+    public function forgotPassword(
+        Request $request,
+        UtilisateurRepository $utilisateurRepository,
+        EntityManagerInterface $em,
+        MailerInterface $mailer,
+        UrlGeneratorInterface $urlGenerator,
+        ValidatorInterface $validator,
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['email'])) {
+            return $this->json(['error' => "Le champ 'email' est requis"], Response::HTTP_BAD_REQUEST);
+        }
+
+        $emailViolations = $validator->validate($data['email'], new Assert\Email());
+        if (count($emailViolations) > 0) {
+            return $this->json(['error' => 'Email invalide'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $utilisateur = $utilisateurRepository->findOneBy(['email' => $data['email']]);
+
+        // Réponse identique que l'utilisateur existe ou non (anti-énumération)
+        if ($utilisateur) {
+            $token = bin2hex(random_bytes(32));
+            $utilisateur->setTokenResetPassword($token);
+            $utilisateur->setTokenResetPasswordExpiresAt(new \DateTime('+1 hour'));
+            $em->flush();
+
+            $resetUrl = $urlGenerator->generate(
+                'api_auth_reset_password',
+                ['token' => $token],
+                UrlGeneratorInterface::ABSOLUTE_URL
+            );
+
+            $email = (new Email())
+                ->to($utilisateur->getEmail())
+                ->subject('Réinitialisation de votre mot de passe SailingLoc')
+                ->html($this->renderView('emails/reset_password.html.twig', [
+                    'prenom'   => $utilisateur->getPrenom(),
+                    'resetUrl' => $resetUrl,
+                ]));
+
+            $mailer->send($email);
+        }
+
+        return $this->json(['message' => 'Si un compte est associé à cet email, un lien de réinitialisation a été envoyé.'], Response::HTTP_OK);
+    }
+
+    #[OA\Post(
+        path: '/api/auth/reset-password/{token}',
+        summary: 'Réinitialiser le mot de passe avec un token',
+        parameters: [
+            new OA\Parameter(name: 'token', in: 'path', required: true, schema: new OA\Schema(type: 'string')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['password'],
+                properties: [
+                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'nouveauMotDePasse123'),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Mot de passe réinitialisé avec succès'),
+            new OA\Response(response: 400, description: 'Token expiré ou mot de passe manquant'),
+            new OA\Response(response: 404, description: 'Token invalide'),
+        ]
+    )]
+    #[Security(name: null)]
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST'])]
+    public function resetPassword(
+        string $token,
+        Request $request,
+        UtilisateurRepository $utilisateurRepository,
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $hasher,
+    ): JsonResponse {
+        $utilisateur = $utilisateurRepository->findOneBy(['tokenResetPassword' => $token]);
+
+        if (!$utilisateur) {
+            return $this->json(['error' => 'Token invalide.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($utilisateur->getTokenResetPasswordExpiresAt() < new \DateTime()) {
+            return $this->json(['error' => 'Ce lien a expiré. Veuillez refaire une demande.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $data = json_decode($request->getContent(), true);
+
+        if (empty($data['password'])) {
+            return $this->json(['error' => "Le champ 'password' est requis"], Response::HTTP_BAD_REQUEST);
+        }
+
+        $utilisateur->setPassword($hasher->hashPassword($utilisateur, $data['password']));
+        $utilisateur->setTokenResetPassword(null);
+        $utilisateur->setTokenResetPasswordExpiresAt(null);
+
+        $em->flush();
+
+        return $this->json(['message' => 'Mot de passe réinitialisé avec succès.'], Response::HTTP_OK);
+    }
 }

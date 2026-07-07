@@ -53,6 +53,12 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $tokenConfirmation = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $tokenResetPassword = null;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $tokenResetPasswordExpiresAt = null;
+
     #[ORM\OneToMany(targetEntity: Bateau::class, mappedBy: 'proprietaire')]
     private Collection $bateaux;
 
@@ -317,6 +323,30 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTokenConfirmation(?string $tokenConfirmation): static
     {
         $this->tokenConfirmation = $tokenConfirmation;
+
+        return $this;
+    }
+
+    public function getTokenResetPassword(): ?string
+    {
+        return $this->tokenResetPassword;
+    }
+
+    public function setTokenResetPassword(?string $tokenResetPassword): static
+    {
+        $this->tokenResetPassword = $tokenResetPassword;
+
+        return $this;
+    }
+
+    public function getTokenResetPasswordExpiresAt(): ?\DateTimeInterface
+    {
+        return $this->tokenResetPasswordExpiresAt;
+    }
+
+    public function setTokenResetPasswordExpiresAt(?\DateTimeInterface $expiresAt): static
+    {
+        $this->tokenResetPasswordExpiresAt = $expiresAt;
 
         return $this;
     }

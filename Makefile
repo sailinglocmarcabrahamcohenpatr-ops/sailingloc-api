@@ -53,3 +53,9 @@ test: ## Lance toute la suite de tests
 test-setup: ## Crée et migre la base de données de test
 	docker compose exec -e APP_ENV=test app php bin/console doctrine:database:create --if-not-exists
 	docker compose exec -e APP_ENV=test app php bin/console doctrine:migrations:migrate --no-interaction
+
+# Documentation
+
+doc: ## Exporte la documentation OpenAPI en JSON (public/doc.json)
+	docker compose exec app php bin/console nelmio:apidoc:dump --format=json > public/doc.json
+	@echo "Documentation exportée dans public/doc.json"
