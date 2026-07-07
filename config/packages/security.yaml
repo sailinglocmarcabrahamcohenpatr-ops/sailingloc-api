@@ -39,6 +39,8 @@ security:
         - { path: ^/api/auth/login,          roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/register,       roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/confirm,        roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc,                 roles: PUBLIC_ACCESS }
         # Routes de consultation publiques (lecture seule, sans authentification)
         - { path: ^/api/bateaux,             roles: PUBLIC_ACCESS, methods: [GET] }
