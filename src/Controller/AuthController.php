@@ -213,8 +213,7 @@ class AuthController extends AbstractController
         EntityManagerInterface $em,
         MailerInterface $mailer,
         ValidatorInterface $validator,
-        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(env: 'FRONTEND_URL')]
-        string $frontendUrl,
+        UrlGeneratorInterface $urlGenerator,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
@@ -236,7 +235,11 @@ class AuthController extends AbstractController
             $utilisateur->setTokenResetPasswordExpiresAt(new \DateTime('+1 hour'));
             $em->flush();
 
-            $resetUrl = $frontendUrl . '/reset-password?token=' . $token;
+            $resetUrl = $urlGenerator->generate(
+                'api_auth_reset_password',
+                ['token' => $token],
+                UrlGeneratorInterface::ABSOLUTE_URL
+            );
 
             $email = (new Email())
                 ->to($utilisateur->getEmail())
@@ -274,36 +277,59 @@ class AuthController extends AbstractController
         ]
     )]
     #[Security(name: null)]
-    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['POST'])]
+    #[Route('/reset-password/{token}', name: 'reset_password', methods: ['GET', 'POST'])]
     public function resetPassword(
         string $token,
         Request $request,
         UtilisateurRepository $utilisateurRepository,
         EntityManagerInterface $em,
         UserPasswordHasherInterface $hasher,
-    ): JsonResponse {
+        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(env: 'FRONTEND_URL')]
+        string $frontendUrl,
+    ): Response {
         $utilisateur = $utilisateurRepository->findOneBy(['tokenResetPassword' => $token]);
 
         if (!$utilisateur) {
-            return $this->json(['error' => 'Token invalide.'], Response::HTTP_NOT_FOUND);
+            return $this->render('account/error.html.twig', [], new Response('', Response::HTTP_NOT_FOUND));
         }
 
         if ($utilisateur->getTokenResetPasswordExpiresAt() < new \DateTime()) {
-            return $this->json(['error' => 'Ce lien a expiré. Veuillez refaire une demande.'], Response::HTTP_BAD_REQUEST);
+            return $this->render('account/reset_password_expired.html.twig', [
+                'loginUrl' => $frontendUrl . '/login',
+            ], new Response('', Response::HTTP_BAD_REQUEST));
         }
 
-        $data = json_decode($request->getContent(), true);
+        if ($request->isMethod('POST')) {
+            $password = $request->request->get('password', '');
+            $confirm  = $request->request->get('password_confirm', '');
 
-        if (empty($data['password'])) {
-            return $this->json(['error' => "Le champ 'password' est requis"], Response::HTTP_BAD_REQUEST);
+            if (strlen($password) < 8) {
+                return $this->render('account/reset_password_form.html.twig', [
+                    'token' => $token,
+                    'error' => 'Le mot de passe doit contenir au moins 8 caractères.',
+                ]);
+            }
+
+            if ($password !== $confirm) {
+                return $this->render('account/reset_password_form.html.twig', [
+                    'token' => $token,
+                    'error' => 'Les mots de passe ne correspondent pas.',
+                ]);
+            }
+
+            $utilisateur->setPassword($hasher->hashPassword($utilisateur, $password));
+            $utilisateur->setTokenResetPassword(null);
+            $utilisateur->setTokenResetPasswordExpiresAt(null);
+            $em->flush();
+
+            return $this->render('account/reset_password_success.html.twig', [
+                'loginUrl' => $frontendUrl . '/login',
+            ]);
         }
 
-        $utilisateur->setPassword($hasher->hashPassword($utilisateur, $data['password']));
-        $utilisateur->setTokenResetPassword(null);
-        $utilisateur->setTokenResetPasswordExpiresAt(null);
-
-        $em->flush();
-
-        return $this->json(['message' => 'Mot de passe réinitialisé avec succès.'], Response::HTTP_OK);
+        return $this->render('account/reset_password_form.html.twig', [
+            'token' => $token,
+            'error' => null,
+        ]);
     }
 }
