@@ -14,17 +14,19 @@ class PhotoBateau
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['photo:read'])]
+    #[Groups(['photo:read', 'bateau:read'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::TEXT)]
-    #[Groups(['photo:read'])]
+    #[Groups(['photo:read', 'bateau:read'])]
     private string $url;
 
     #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['photo:read', 'bateau:read'])]
     private ?string $description = null;
 
     #[ORM\Column(name: 'ordre_affichage', nullable: true)]
+    #[Groups(['photo:read', 'bateau:read'])]
     private ?int $ordreAffichage = null;
 
     #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'photos')]

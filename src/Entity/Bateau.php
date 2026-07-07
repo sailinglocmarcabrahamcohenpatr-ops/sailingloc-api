@@ -85,9 +85,11 @@ class Bateau
     private ?TypeBateau $typeBateau = null;
 
     #[ORM\OneToMany(targetEntity: Disponibilite::class, mappedBy: 'bateau')]
+    #[Groups(['bateau:read'])]
     private Collection $disponibilites;
 
     #[ORM\OneToMany(targetEntity: PhotoBateau::class, mappedBy: 'bateau')]
+    #[Groups(['bateau:read'])]
     private Collection $photos;
 
     #[ORM\ManyToMany(targetEntity: Utilisateur::class, mappedBy: 'bateauxFavoris')]

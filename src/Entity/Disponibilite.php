@@ -14,17 +14,19 @@ class Disponibilite
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::BIGINT)]
-    #[Groups(['disponibilite:read'])]
+    #[Groups(['disponibilite:read', 'bateau:read'])]
     private ?int $id = null;
 
     #[ORM\Column(name: 'date_debut', type: Types::DATETIME_MUTABLE)]
-    #[Groups(['disponibilite:read'])]
+    #[Groups(['disponibilite:read', 'bateau:read'])]
     private \DateTimeInterface $dateDebut;
 
     #[ORM\Column(name: 'date_fin', type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[Groups(['bateau:read'])]
     private ?\DateTimeInterface $dateFin = null;
 
     #[ORM\Column(length: 50)]
+    #[Groups(['bateau:read'])]
     private string $statut;
 
     #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'disponibilites')]
