@@ -209,5 +209,37 @@ class UtilisateurController extends AbstractController
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
+
+    #[OA\Get(
+        path: '/api/utilisateurs/search/email',
+        summary: 'Rechercher un utilisateur par email (ADMIN)',
+        parameters: [
+            new OA\Parameter(name: 'email', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'email')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Utilisateur trouvé'),
+            new OA\Response(response: 400, description: 'Paramètre email manquant'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Utilisateur non trouvé'),
+        ]
+    )]
+    #[Route('/search/email', name: 'search_by_email', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function searchByEmail(Request $request): JsonResponse
+    {
+        $email = $request->query->get('email');
+
+        if (!$email) {
+            return $this->json(['message' => 'Le paramètre email est requis.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $utilisateur = $this->repository->findOneBy(['email' => $email]);
+
+        if (!$utilisateur) {
+            return $this->json(['message' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json($utilisateur, Response::HTTP_OK, [], ['groups' => ['utilisateur:read']]);
+    }
 }
 
