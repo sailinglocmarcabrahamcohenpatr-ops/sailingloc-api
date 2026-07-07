@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\BateauRepository;
+use App\Enum\StatutBateauEnum;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -43,9 +44,9 @@ class Bateau
     #[Groups(['bateau:read'])]
     private ?string $description = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(type: 'string', enumType: StatutBateauEnum::class, length: 50)]
     #[Groups(['bateau:read'])]
-    private string $statut;
+    private StatutBateauEnum $statut = StatutBateauEnum::INDISPONIBLE;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 20, scale: 2)]
     #[Groups(['bateau:read'])]
@@ -54,6 +55,22 @@ class Bateau
     #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 2, nullable: true)]
     #[Groups(['bateau:read'])]
     private ?string $prixHeure = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 2, nullable: true)]
+    #[Groups(['bateau:read'])]
+    private ?string $caution = null;
+
+    #[ORM\Column]
+    #[Groups(['bateau:read'])]
+    private bool $carburantInclus = false;
+
+    #[ORM\Column]
+    #[Groups(['bateau:read'])]
+    private bool $permisRequis = false;
+
+    #[ORM\Column(nullable: true)]
+    #[Groups(['bateau:read'])]
+    private ?int $nombreCabines = null;
 
     #[ORM\ManyToOne(targetEntity: Port::class, inversedBy: 'bateaux')]
     #[ORM\JoinColumn(nullable: false)]
@@ -164,12 +181,12 @@ class Bateau
         return $this;
     }
 
-    public function getStatut(): string
+    public function getStatut(): StatutBateauEnum
     {
         return $this->statut;
     }
 
-    public function setStatut(string $statut): static
+    public function setStatut(StatutBateauEnum $statut): static
     {
         $this->statut = $statut;
 
@@ -196,6 +213,54 @@ class Bateau
     public function setPrixHeure(?string $prixHeure): static
     {
         $this->prixHeure = $prixHeure;
+
+        return $this;
+    }
+
+    public function getCaution(): ?string
+    {
+        return $this->caution;
+    }
+
+    public function setCaution(?string $caution): static
+    {
+        $this->caution = $caution;
+
+        return $this;
+    }
+
+    public function isCarburantInclus(): bool
+    {
+        return $this->carburantInclus;
+    }
+
+    public function setCarburantInclus(bool $carburantInclus): static
+    {
+        $this->carburantInclus = $carburantInclus;
+
+        return $this;
+    }
+
+    public function isPermisRequis(): bool
+    {
+        return $this->permisRequis;
+    }
+
+    public function setPermisRequis(bool $permisRequis): static
+    {
+        $this->permisRequis = $permisRequis;
+
+        return $this;
+    }
+
+    public function getNombreCabines(): ?int
+    {
+        return $this->nombreCabines;
+    }
+
+    public function setNombreCabines(?int $nombreCabines): static
+    {
+        $this->nombreCabines = $nombreCabines;
 
         return $this;
     }

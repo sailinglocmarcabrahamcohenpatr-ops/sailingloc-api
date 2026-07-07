@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Bateau;
+use App\Enum\StatutBateauEnum;
 use App\Repository\BateauRepository;
 use App\Repository\PortRepository;
 use App\Repository\TypeBateauRepository;
@@ -102,8 +103,12 @@ class BateauController extends AbstractController
                     new OA\Property(property: 'capacite', type: 'integer', example: 8, nullable: true),
                     new OA\Property(property: 'avec_skipper', type: 'boolean', example: false),
                     new OA\Property(property: 'description', type: 'string', nullable: true),
-                    new OA\Property(property: 'statut', type: 'string', example: 'disponible'),
+                    new OA\Property(property: 'statut', type: 'string', enum: ['disponible', 'lou\u00e9', 'maintenance', 'en attente de validation'], example: 'en attente de validation'),
                     new OA\Property(property: 'prix_heure', type: 'number', nullable: true),
+                    new OA\Property(property: 'permis_requis', type: 'boolean', example: false),
+                    new OA\Property(property: 'nombre_cabines', type: 'integer', nullable: true),
+                    new OA\Property(property: 'caution', type: 'number', nullable: true),
+                    new OA\Property(property: 'carburant_inclus', type: 'boolean', example: false),
                 ]
             )
         ),
@@ -143,9 +148,13 @@ class BateauController extends AbstractController
         $bateau->setTaille($data['taille'] ?? '');
         $bateau->setAvecSkipper((bool) ($data['avec_skipper'] ?? false));
         $bateau->setDescription($data['description'] ?? null);
-        $bateau->setStatut($data['statut'] ?? 'disponible');
+        $bateau->setStatut(StatutBateauEnum::from($data['statut'] ?? StatutBateauEnum::DISPONIBLE->value));
         $bateau->setPrixJour((string) ($data['prix_jour'] ?? '0'));
         $bateau->setPrixHeure(isset($data['prix_heure']) ? (string) $data['prix_heure'] : null);
+        $bateau->setPermisRequis((bool) ($data['permis_requis'] ?? false));
+        $bateau->setNombreCabines(isset($data['nombre_cabines']) ? (int) $data['nombre_cabines'] : null);
+        $bateau->setCaution(isset($data['caution']) ? (string) $data['caution'] : null);
+        $bateau->setCarburantInclus((bool) ($data['carburant_inclus'] ?? false));
         $bateau->setPort($port);
         $bateau->setProprietaire($proprietaire);
         $bateau->setTypeBateau($typeBateau);
@@ -192,9 +201,19 @@ class BateauController extends AbstractController
         if (isset($data['taille'])) $bateau->setTaille($data['taille']);
         if (isset($data['avec_skipper'])) $bateau->setAvecSkipper((bool) $data['avec_skipper']);
         if (array_key_exists('description', $data)) $bateau->setDescription($data['description']);
-        if (isset($data['statut'])) $bateau->setStatut($data['statut']);
+        if (isset($data['statut'])) {
+            $statut = StatutBateauEnum::tryFrom($data['statut']);
+            if ($statut === null) {
+                return $this->json(['message' => 'Statut invalide.', 'valeurs' => array_column(StatutBateauEnum::cases(), 'value')], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $bateau->setStatut($statut);
+        }
         if (isset($data['prix_jour'])) $bateau->setPrixJour((string) $data['prix_jour']);
         if (array_key_exists('prix_heure', $data)) $bateau->setPrixHeure($data['prix_heure'] !== null ? (string) $data['prix_heure'] : null);
+        if (isset($data['permis_requis'])) $bateau->setPermisRequis((bool) $data['permis_requis']);
+        if (array_key_exists('nombre_cabines', $data)) $bateau->setNombreCabines($data['nombre_cabines'] !== null ? (int) $data['nombre_cabines'] : null);
+        if (array_key_exists('caution', $data)) $bateau->setCaution($data['caution'] !== null ? (string) $data['caution'] : null);
+        if (isset($data['carburant_inclus'])) $bateau->setCarburantInclus((bool) $data['carburant_inclus']);
 
         if (isset($data['id_port'])) {
             $port = $this->portRepository->find($data['id_port']);
