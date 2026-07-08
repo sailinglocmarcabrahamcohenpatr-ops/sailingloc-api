@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Utilisateur;
+use App\Enum\RoleEnum;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
@@ -208,6 +209,34 @@ class UtilisateurController extends AbstractController
         $this->em->flush();
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[OA\Patch(
+        path: '/api/utilisateurs/{id}/promote-proprietaire',
+        summary: 'Promouvoir un utilisateur au rôle PROPRIETAIRE (ADMIN)',
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Rôle mis à jour'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Utilisateur non trouvé'),
+        ]
+    )]
+    #[Route('/{id}/promote-proprietaire', name: 'promote_proprietaire', methods: ['PATCH'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function promoteProprietaire(int $id): JsonResponse
+    {
+        $utilisateur = $this->repository->find($id);
+
+        if (!$utilisateur) {
+            return $this->json(['message' => 'Utilisateur non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $utilisateur->addRole(RoleEnum::PROPRIETAIRE);
+        $this->em->flush();
+
+        return $this->json($utilisateur, Response::HTTP_OK, [], ['groups' => ['utilisateur:read']]);
     }
 
     #[OA\Get(
