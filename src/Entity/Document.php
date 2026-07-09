@@ -35,6 +35,11 @@ class Document
     #[ORM\ManyToMany(targetEntity: Utilisateur::class, mappedBy: 'documents')]
     private Collection $utilisateurs;
 
+    #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'documents')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[Groups(['document:read'])]
+    private ?Bateau $bateau = null;
+
     public function __construct()
     {
         $this->dateUpload = new \DateTime();
@@ -85,5 +90,17 @@ class Document
     public function getUtilisateurs(): Collection
     {
         return $this->utilisateurs;
+    }
+
+    public function getBateau(): ?Bateau
+    {
+        return $this->bateau;
+    }
+
+    public function setBateau(?Bateau $bateau): static
+    {
+        $this->bateau = $bateau;
+
+        return $this;
     }
 }

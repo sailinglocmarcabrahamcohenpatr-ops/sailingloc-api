@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Document;
 use App\Entity\Utilisateur;
+use App\Repository\BateauRepository;
 use App\Repository\DocumentRepository;
 use App\Repository\TypeDocumentRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -26,6 +27,7 @@ class DocumentController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly DocumentRepository $repository,
         private readonly TypeDocumentRepository $typeDocumentRepository,
+        private readonly BateauRepository $bateauRepository,
         private readonly SluggerInterface $slugger,
         #[Autowire('%upload_documents_directory%')] private readonly string $uploadDirectory,
         #[Autowire('%upload_documents_base_url%')] private readonly string $uploadBaseUrl,
@@ -84,6 +86,7 @@ class DocumentController extends AbstractController
                     properties: [
                         new OA\Property(property: 'fichier', type: 'string', format: 'binary', description: 'Fichier à uploader (PDF, JPEG, PNG — max 10 Mo)'),
                         new OA\Property(property: 'id_type_document', type: 'integer', example: 1, description: 'ID du type de document'),
+                        new OA\Property(property: 'id_bateau', type: 'integer', example: 1, nullable: true, description: 'ID du bateau auquel associer le document (optionnel)'),
                     ]
                 )
             )
@@ -128,6 +131,15 @@ class DocumentController extends AbstractController
         $document = new Document();
         $document->setUrlDocument($this->uploadBaseUrl . '/' . $newFilename);
         $document->setTypeDocument($typeDocument);
+
+        $bateauId = $request->request->get('id_bateau');
+        if ($bateauId) {
+            $bateau = $this->bateauRepository->find((int) $bateauId);
+            if (!$bateau) {
+                return $this->json(['message' => 'Bateau introuvable.'], Response::HTTP_NOT_FOUND);
+            }
+            $document->setBateau($bateau);
+        }
 
         /** @var Utilisateur $user */
         $user = $this->getUser();
