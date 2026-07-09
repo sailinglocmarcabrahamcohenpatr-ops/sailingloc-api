@@ -7,7 +7,6 @@ use App\Enum\StatutBateauEnum;
 use App\Repository\BateauRepository;
 use App\Repository\PortRepository;
 use App\Repository\TypeBateauRepository;
-use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,7 +25,6 @@ class BateauController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly BateauRepository $repository,
         private readonly PortRepository $portRepository,
-        private readonly UtilisateurRepository $utilisateurRepository,
         private readonly TypeBateauRepository $typeBateauRepository,
         private readonly ValidatorInterface $validator,
     ) {}
@@ -90,14 +88,13 @@ class BateauController extends AbstractController
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['nom_bateau', 'motorisation', 'taille', 'prix_jour', 'id_port', 'id_utilisateur', 'id_type_bateau'],
+                required: ['nom_bateau', 'motorisation', 'taille', 'prix_jour', 'id_port', 'id_type_bateau'],
                 properties: [
                     new OA\Property(property: 'nom_bateau', type: 'string', example: 'Mon Voilier'),
                     new OA\Property(property: 'motorisation', type: 'string', example: 'voile'),
                     new OA\Property(property: 'taille', type: 'string', example: '12m'),
                     new OA\Property(property: 'prix_jour', type: 'number', example: 250),
                     new OA\Property(property: 'id_port', type: 'integer', example: 1),
-                    new OA\Property(property: 'id_utilisateur', type: 'integer', example: 2),
                     new OA\Property(property: 'id_type_bateau', type: 'integer', example: 1),
                     new OA\Property(property: 'capacite', type: 'integer', example: 8, nullable: true),
                     new OA\Property(property: 'avec_skipper', type: 'boolean', example: false),
@@ -126,18 +123,20 @@ class BateauController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $required = ['nom_bateau', 'motorisation', 'taille', 'prix_jour', 'id_port', 'id_utilisateur', 'id_type_bateau'];
+        $required = ['nom_bateau', 'motorisation', 'taille', 'prix_jour', 'id_port', 'id_type_bateau'];
         $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
         if ($missing) {
             return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
         }
 
+        /** @var \App\Entity\Utilisateur $proprietaire */
+        $proprietaire = $this->getUser();
+
         $port = $this->portRepository->find($data['id_port']);
-        $proprietaire = $this->utilisateurRepository->find($data['id_utilisateur']);
         $typeBateau = $this->typeBateauRepository->find($data['id_type_bateau']);
 
-        if (!$port || !$proprietaire || !$typeBateau) {
-            return $this->json(['message' => 'Port, utilisateur ou type de bateau introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!$port || !$typeBateau) {
+            return $this->json(['message' => 'Port ou type de bateau introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $bateau = new Bateau();
