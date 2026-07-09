@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: AssuranceRepository::class)]
 #[ORM\Table(name: 'assurance')]
@@ -15,18 +16,23 @@ class Assurance
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['referentiel:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 150)]
+    #[Groups(['referentiel:read'])]
     private string $nom;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['referentiel:read'])]
     private ?string $description = null;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 2)]
+    #[Groups(['referentiel:read'])]
     private string $prix;
 
     #[ORM\Column(length: 50)]
+    #[Groups(['referentiel:read'])]
     private string $type;
 
     #[ORM\ManyToMany(targetEntity: Reservation::class, mappedBy: 'assurances')]

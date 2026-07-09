@@ -6,6 +6,7 @@ use App\Repository\StatutPaiementRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: StatutPaiementRepository::class)]
 #[ORM\Table(name: 'statut_paiement')]
@@ -14,9 +15,11 @@ class StatutPaiement
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['referentiel:read', 'paiement:read'])]
     private ?int $id = null;
 
     #[ORM\Column(name: 'label_statut_paiement', length: 50, unique: true)]
+    #[Groups(['referentiel:read', 'paiement:read'])]
     private string $labelStatutPaiement;
 
     #[ORM\OneToMany(targetEntity: Paiement::class, mappedBy: 'statutPaiementRef')]
