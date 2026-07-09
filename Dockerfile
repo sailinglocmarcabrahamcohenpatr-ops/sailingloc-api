@@ -13,11 +13,15 @@ RUN apk add --no-cache \
         libsodium-dev \
     && docker-php-ext-configure intl \
     && docker-php-ext-install \
+        fileinfo \
         intl \
         opcache \
         pdo \
         pdo_pgsql \
         sodium
+
+# Limites d'upload PHP
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -56,6 +60,8 @@ RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --opti
 COPY . .
 
 RUN composer dump-autoload --optimize \
-    && php bin/console cache:warmup
+    && php bin/console cache:warmup \
+    && mkdir -p public/uploads/photos public/uploads/documents \
+    && chown -R www-data:www-data public/uploads var
 
 EXPOSE 9000

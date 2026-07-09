@@ -23,8 +23,8 @@ final class Version20260709000001 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE document DROP FOREIGN KEY FK_D8698A76B1ECEC1');
-        $this->addSql('DROP INDEX IDX_D8698A76B1ECEC1 ON document');
+        $this->addSql('ALTER TABLE document DROP CONSTRAINT FK_D8698A76B1ECEC1');
+        $this->addSql('DROP INDEX IDX_D8698A76B1ECEC1');
         $this->addSql('ALTER TABLE document DROP COLUMN bateau_id');
     }
 }
