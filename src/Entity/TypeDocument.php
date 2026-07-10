@@ -15,11 +15,11 @@ class TypeDocument
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['document:read', 'referentiel:read'])]
+    #[Groups(['document:read', 'referentiel:read', 'bateau:read'])]
     private ?int $id = null;
 
     #[ORM\Column(name: 'label_type_document', length: 150)]
-    #[Groups(['document:read', 'referentiel:read'])]
+    #[Groups(['document:read', 'referentiel:read', 'bateau:read'])]
     private string $labelTypeDocument;
 
     #[ORM\OneToMany(targetEntity: Document::class, mappedBy: 'typeDocument')]
