@@ -11,8 +11,11 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mercure\HubInterface;
+use Symfony\Component\Mercure\Update;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[OA\Tag(name: 'Messages')]
@@ -25,6 +28,8 @@ class MessageController extends AbstractController
         private readonly MessageRepository $repository,
         private readonly UtilisateurRepository $utilisateurRepository,
         private readonly ValidatorInterface $validator,
+        private readonly HubInterface $hub,
+        private readonly SerializerInterface $serializer,
     ) {}
 
     #[OA\Get(
@@ -129,6 +134,14 @@ class MessageController extends AbstractController
 
         $this->em->persist($message);
         $this->em->flush();
+
+        // Notifier le destinataire en temps réel via Mercure
+        $payload = $this->serializer->serialize($message, 'json', ['groups' => ['message:read']]);
+        $this->hub->publish(new Update(
+            topics: ["/messages/user/{$destinataire->getId()}"],
+            data: $payload,
+            private: true,
+        ));
 
         return $this->json($message, Response::HTTP_CREATED, [], ['groups' => ['message:read']]);
     }

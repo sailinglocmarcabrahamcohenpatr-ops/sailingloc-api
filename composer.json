@@ -13,6 +13,7 @@
         "jms/serializer": "^3.32",
         "lexik/jwt-authentication-bundle": "*",
         "nelmio/api-doc-bundle": "^5.10",
+        "symfony/mercure-bundle": "^0.3",
         "symfony/asset": "8.0.*",
         "symfony/console": "8.0.*",
         "symfony/dotenv": "8.0.*",
