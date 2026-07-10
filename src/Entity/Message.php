@@ -31,10 +31,12 @@ class Message
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'messagesEnvoyes')]
     #[ORM\JoinColumn(name: 'id_utilisateur', nullable: false)]
+    #[Groups(['message:read'])]
     private ?Utilisateur $expediteur = null;
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'messagesRecus')]
     #[ORM\JoinColumn(name: 'id_utilisateur_1', nullable: false)]
+    #[Groups(['message:read'])]
     private ?Utilisateur $destinataire = null;
 
     public function __construct()

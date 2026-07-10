@@ -26,4 +26,15 @@ class MessageRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /** @return Message[] Messages où l'utilisateur est expéditeur ou destinataire */
+    public function findByUser(int $utilisateurId): array
+    {
+        return $this->createQueryBuilder('m')
+            ->where('m.expediteur = :u OR m.destinataire = :u')
+            ->setParameter('u', $utilisateurId)
+            ->orderBy('m.dateEnvoi', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }

@@ -20,19 +20,19 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::BIGINT)]
-    #[Groups(['utilisateur:read', 'bateau:read'])]
+    #[Groups(['utilisateur:read', 'bateau:read', 'message:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['utilisateur:read', 'bateau:read'])]
+    #[Groups(['utilisateur:read', 'bateau:read', 'message:read'])]
     private string $nom;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['utilisateur:read', 'bateau:read'])]
+    #[Groups(['utilisateur:read', 'bateau:read', 'message:read'])]
     private string $prenom;
 
     #[ORM\Column(length: 255, unique: true)]
-    #[Groups(['utilisateur:read', 'bateau:read'])]
+    #[Groups(['utilisateur:read', 'bateau:read', 'message:read'])]
     private string $email;
 
     #[ORM\Column(length: 255)]

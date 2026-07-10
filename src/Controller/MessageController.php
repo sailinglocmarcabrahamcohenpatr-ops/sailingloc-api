@@ -12,10 +12,12 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[OA\Tag(name: 'Messages')]
 #[Route('/api/messages', name: 'api_messages_')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 class MessageController extends AbstractController
 {
     public function __construct(
@@ -37,13 +39,15 @@ class MessageController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
+        /** @var \App\Entity\Utilisateur $currentUser */
+        $currentUser = $this->getUser();
         $u1 = $request->query->get('expediteur');
         $u2 = $request->query->get('destinataire');
 
-        if ($u1 && $u2) {
+        if ($u1 && $u2 && $this->isGranted('ROLE_ADMIN')) {
             $messages = $this->repository->findConversation((int) $u1, (int) $u2);
         } else {
-            $messages = $this->repository->findAll();
+            $messages = $this->repository->findByUser($currentUser->getId());
         }
 
         return $this->json($messages, Response::HTTP_OK, [], ['groups' => ['message:read']]);
@@ -76,11 +80,10 @@ class MessageController extends AbstractController
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['contenu', 'id_utilisateur', 'id_utilisateur_1'],
+                required: ['contenu', 'id_destinataire'],
                 properties: [
                     new OA\Property(property: 'contenu', type: 'string', example: 'Bonjour, le bateau est-il disponible ?'),
-                    new OA\Property(property: 'id_utilisateur', type: 'integer', description: 'ID de l\'expéditeur', example: 1),
-                    new OA\Property(property: 'id_utilisateur_1', type: 'integer', description: 'ID du destinataire', example: 2),
+                    new OA\Property(property: 'id_destinataire', type: 'integer', description: 'ID du destinataire', example: 2),
                 ]
             )
         ),
@@ -98,21 +101,24 @@ class MessageController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $required = ['contenu', 'id_utilisateur', 'id_utilisateur_1'];
-        $missing = array_filter($required, fn($f) => empty($data[$f]));
-        if ($missing) {
-            return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
+        if (empty($data['contenu']) || empty($data['id_destinataire'])) {
+            return $this->json(['message' => 'Les champs contenu et id_destinataire sont requis.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $expediteur = $this->utilisateurRepository->find($data['id_utilisateur']);
-        $destinataire = $this->utilisateurRepository->find($data['id_utilisateur_1']);
+        /** @var \App\Entity\Utilisateur $expediteur */
+        $expediteur   = $this->getUser();
+        $destinataire = $this->utilisateurRepository->find($data['id_destinataire']);
 
-        if (!$expediteur || !$destinataire) {
-            return $this->json(['message' => 'Expéditeur ou destinataire introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!$destinataire) {
+            return $this->json(['message' => 'Destinataire introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if ($expediteur === $destinataire) {
+            return $this->json(['message' => 'Vous ne pouvez pas vous envoyer un message à vous-même.'], Response::HTTP_BAD_REQUEST);
         }
 
         $message = new Message();
-        $message->setContenu($data['contenu'] ?? '');
+        $message->setContenu($data['contenu']);
         $message->setExpediteur($expediteur);
         $message->setDestinataire($destinataire);
 
@@ -167,6 +173,10 @@ class MessageController extends AbstractController
 
         if (!$message) {
             return $this->json(['message' => 'Message non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $message->getExpediteur() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
         $this->em->remove($message);
