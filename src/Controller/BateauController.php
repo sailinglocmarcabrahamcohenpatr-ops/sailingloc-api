@@ -146,7 +146,7 @@ class BateauController extends AbstractController
         $bateau->setTaille($data['taille'] ?? '');
         $bateau->setAvecSkipper((bool) ($data['avec_skipper'] ?? false));
         $bateau->setDescription($data['description'] ?? null);
-        $bateau->setStatut(StatutBateauEnum::from($data['statut'] ?? StatutBateauEnum::INDISPONIBLE->value));
+        $bateau->setStatut(StatutBateauEnum::from($data['statut'] ?? StatutBateauEnum::EN_ATTENTE_VALIDATION->value));
         $bateau->setPrixJour((string) ($data['prix_jour'] ?? '0'));
         $bateau->setPrixHeure(isset($data['prix_heure']) ? (string) $data['prix_heure'] : null);
         $bateau->setPermisRequis((bool) ($data['permis_requis'] ?? false));

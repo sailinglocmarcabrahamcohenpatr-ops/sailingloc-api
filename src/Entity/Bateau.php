@@ -46,7 +46,7 @@ class Bateau
 
     #[ORM\Column(type: 'string', enumType: StatutBateauEnum::class, length: 50)]
     #[Groups(['bateau:read'])]
-    private StatutBateauEnum $statut = StatutBateauEnum::INDISPONIBLE;
+    private StatutBateauEnum $statut = StatutBateauEnum::EN_ATTENTE_VALIDATION;
 
     #[ORM\Column(type: Types::DECIMAL, precision: 20, scale: 2)]
     #[Groups(['bateau:read'])]
