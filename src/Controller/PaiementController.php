@@ -73,7 +73,6 @@ class PaiementController extends AbstractController
                     new OA\Property(property: 'id_reservation', type: 'integer', example: 1),
                     new OA\Property(property: 'id_statut_paiement', type: 'integer', example: 1),
                     new OA\Property(property: 'id_mode_paiement', type: 'integer', example: 1),
-                    new OA\Property(property: 'statut_paiement', type: 'string', example: 'en_attente', nullable: true),
                     new OA\Property(property: 'date_paiement', type: 'string', format: 'date', nullable: true),
                 ]
             )
@@ -108,7 +107,6 @@ class PaiementController extends AbstractController
 
         $paiement = new Paiement();
         $paiement->setMontant((string) ($data['montant'] ?? '0'));
-        $paiement->setStatutPaiement($data['statut_paiement'] ?? '');
         $paiement->setReservation($reservation);
         $paiement->setStatutPaiementRef($statutRef);
         $paiement->setModePaiement($mode);
@@ -149,7 +147,6 @@ class PaiementController extends AbstractController
         $data = json_decode($request->getContent(), true);
 
         if (isset($data['montant'])) $paiement->setMontant((string) $data['montant']);
-        if (isset($data['statut_paiement'])) $paiement->setStatutPaiement($data['statut_paiement']);
         if (isset($data['date_paiement'])) $paiement->setDatePaiement(new \DateTime($data['date_paiement']));
 
         if (isset($data['id_statut_paiement'])) {
