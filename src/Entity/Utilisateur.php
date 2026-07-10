@@ -46,9 +46,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['utilisateur:read'])]
     private ?\DateTimeInterface $dateInscription = null;
 
-    #[ORM\Column(length: 50, nullable: true)]
+    #[ORM\Column(type: 'string', enumType: StatutCompteEnum::class, length: 50)]
     #[Groups(['utilisateur:read'])]
-    private ?string $statutCompte = null;
+    private StatutCompteEnum $statutCompte = StatutCompteEnum::INACTIF;
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $tokenConfirmation = null;
@@ -90,7 +90,6 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->bateaux = new ArrayCollection();
         $this->roles = [RoleEnum::USER->value];
-        $this->statutCompte = StatutCompteEnum::INACTIF->value;
         $this->documents = new ArrayCollection();
         $this->bateauxFavoris = new ArrayCollection();
         $this->messagesEnvoyes = new ArrayCollection();
@@ -177,12 +176,12 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getStatutCompte(): ?string
+    public function getStatutCompte(): StatutCompteEnum
     {
         return $this->statutCompte;
     }
 
-    public function setStatutCompte(?string $statutCompte): static
+    public function setStatutCompte(StatutCompteEnum $statutCompte): static
     {
         $this->statutCompte = $statutCompte;
 

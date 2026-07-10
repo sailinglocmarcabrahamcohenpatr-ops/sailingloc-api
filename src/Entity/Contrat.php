@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\ContratRepository;
+use App\Enum\StatutContratEnum;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -24,8 +25,8 @@ class Contrat
     #[ORM\Column(name: 'assurance_incluse')]
     private bool $assuranceIncluse;
 
-    #[ORM\Column(name: 'statut_contrat', length: 50)]
-    private string $statutContrat;
+    #[ORM\Column(type: 'string', enumType: StatutContratEnum::class, length: 20)]
+    private StatutContratEnum $statutContrat = StatutContratEnum::EN_ATTENTE;
 
     #[ORM\OneToOne(mappedBy: 'contrat', targetEntity: Reservation::class)]
     private ?Reservation $reservation = null;
@@ -76,12 +77,12 @@ class Contrat
         return $this;
     }
 
-    public function getStatutContrat(): string
+    public function getStatutContrat(): StatutContratEnum
     {
         return $this->statutContrat;
     }
 
-    public function setStatutContrat(string $statutContrat): static
+    public function setStatutContrat(StatutContratEnum $statutContrat): static
     {
         $this->statutContrat = $statutContrat;
 

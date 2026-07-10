@@ -10,6 +10,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: ModeDePaiementRepository::class)]
 #[ORM\Table(name: 'mode_de_paiement')]
+#[ORM\UniqueConstraint(name: 'uq_label_mode_paiement', columns: ['label_mode_paiement'])]
 class ModeDePaiement
 {
     #[ORM\Id]

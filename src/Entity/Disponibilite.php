@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\DisponibiliteRepository;
+use App\Enum\StatutDisponibiliteEnum;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -25,9 +26,9 @@ class Disponibilite
     #[Groups(['bateau:read'])]
     private ?\DateTimeInterface $dateFin = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(type: 'string', enumType: StatutDisponibiliteEnum::class, length: 20)]
     #[Groups(['bateau:read'])]
-    private string $statut;
+    private StatutDisponibiliteEnum $statut = StatutDisponibiliteEnum::DISPONIBLE;
 
     #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'disponibilites')]
     #[ORM\JoinColumn(nullable: false)]
@@ -62,12 +63,12 @@ class Disponibilite
         return $this;
     }
 
-    public function getStatut(): string
+    public function getStatut(): StatutDisponibiliteEnum
     {
         return $this->statut;
     }
 
-    public function setStatut(string $statut): static
+    public function setStatut(StatutDisponibiliteEnum $statut): static
     {
         $this->statut = $statut;
 

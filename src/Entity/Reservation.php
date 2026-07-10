@@ -36,7 +36,7 @@ class Reservation
     private string $montantTotal;
 
     #[ORM\OneToOne(targetEntity: Contrat::class, inversedBy: 'reservation')]
-    #[ORM\JoinColumn(nullable: false, unique: true)]
+    #[ORM\JoinColumn(nullable: true, unique: true)]
     private ?Contrat $contrat = null;
 
     #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'reservations')]

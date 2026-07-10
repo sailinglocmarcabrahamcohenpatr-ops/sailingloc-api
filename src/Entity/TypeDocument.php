@@ -10,6 +10,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: TypeDocumentRepository::class)]
 #[ORM\Table(name: 'type_document')]
+#[ORM\UniqueConstraint(name: 'uq_label_type_document', columns: ['label_type_document'])]
 class TypeDocument
 {
     #[ORM\Id]

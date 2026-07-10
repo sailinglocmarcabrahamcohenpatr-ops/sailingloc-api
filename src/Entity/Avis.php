@@ -9,6 +9,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: AvisRepository::class)]
 #[ORM\Table(name: 'avis')]
+#[ORM\UniqueConstraint(name: 'uq_avis_utilisateur_reservation', columns: ['utilisateur_id', 'reservation_id'])]
 class Avis
 {
     #[ORM\Id]

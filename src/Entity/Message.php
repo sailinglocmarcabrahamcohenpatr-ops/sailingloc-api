@@ -30,12 +30,12 @@ class Message
     private \DateTimeInterface $dateEnvoi;
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'messagesEnvoyes')]
-    #[ORM\JoinColumn(name: 'id_utilisateur', nullable: false)]
+    #[ORM\JoinColumn(name: 'expediteur_id', nullable: false)]
     #[Groups(['message:read'])]
     private ?Utilisateur $expediteur = null;
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'messagesRecus')]
-    #[ORM\JoinColumn(name: 'id_utilisateur_1', nullable: false)]
+    #[ORM\JoinColumn(name: 'destinataire_id', nullable: false)]
     #[Groups(['message:read'])]
     private ?Utilisateur $destinataire = null;
 

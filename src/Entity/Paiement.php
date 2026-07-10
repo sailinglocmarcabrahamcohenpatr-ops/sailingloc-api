@@ -25,10 +25,6 @@ class Paiement
     #[Groups(['paiement:read'])]
     private string $montant;
 
-    #[ORM\Column(name: 'statut_paiement', length: 50)]
-    #[Groups(['paiement:read'])]
-    private string $statutPaiement;
-
     #[ORM\ManyToOne(targetEntity: StatutPaiement::class, inversedBy: 'paiements')]
     #[ORM\JoinColumn(nullable: false)]
     private ?StatutPaiement $statutPaiementRef = null;
@@ -71,18 +67,6 @@ class Paiement
     public function setMontant(string $montant): static
     {
         $this->montant = $montant;
-
-        return $this;
-    }
-
-    public function getStatutPaiement(): string
-    {
-        return $this->statutPaiement;
-    }
-
-    public function setStatutPaiement(string $statutPaiement): static
-    {
-        $this->statutPaiement = $statutPaiement;
 
         return $this;
     }

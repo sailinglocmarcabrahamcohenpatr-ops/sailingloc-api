@@ -42,11 +42,12 @@ class Port
     #[Groups(['port:read', 'bateau:read'])]
     private ?string $codePostal = null;
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
     #[Groups(['port:read', 'bateau:read'])]
     private ?string $latitude = null;
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
+    #[Groups(['port:read', 'bateau:read'])]
     private ?string $longitude = null;
 
     #[ORM\OneToMany(targetEntity: Bateau::class, mappedBy: 'port')]

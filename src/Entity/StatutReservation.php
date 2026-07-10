@@ -10,6 +10,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: StatutReservationRepository::class)]
 #[ORM\Table(name: 'statut_reservation')]
+#[ORM\UniqueConstraint(name: 'uq_label_statut_reservation', columns: ['label_statut_reservation'])]
 class StatutReservation
 {
     #[ORM\Id]
