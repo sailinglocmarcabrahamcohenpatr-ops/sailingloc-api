@@ -16,7 +16,7 @@ class TypeBateau
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['referentiel:read', 'bateau:read'])]
+    #[Groups(['referentiel:read'])]
     private ?int $id = null;
 
     #[ORM\Column(name: 'label_type_bateau', length: 155)]

@@ -84,6 +84,7 @@ class Bateau
 
     #[ORM\ManyToOne(targetEntity: TypeBateau::class, inversedBy: 'bateaux')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['bateau:read'])]
     private ?TypeBateau $typeBateau = null;
 
     #[ORM\OneToMany(targetEntity: Disponibilite::class, mappedBy: 'bateau')]
