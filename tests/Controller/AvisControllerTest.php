@@ -48,9 +48,23 @@ class AvisControllerTest extends ApiTestCase
         return $resa;
     }
 
-    public function testListEstAccessible(): void
+    public function testListEstReserveAuxAdmins(): void
+    {
+        $this->client->request('GET', '/api/avis', [], [], $this->authHeader($this->adminToken));
+        $this->assertResponseIsSuccessful();
+        $this->assertIsArray(json_decode($this->client->getResponse()->getContent(), true));
+    }
+
+    public function testListRefuseUnSimpleUtilisateur(): void
     {
         $this->client->request('GET', '/api/avis', [], [], $this->authHeader($this->userToken));
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testByBateauResteAccessiblePubliquement(): void
+    {
+        $resa = $this->createReservationFixture();
+        $this->client->request('GET', '/api/avis/bateau/' . $resa->getBateau()->getId());
         $this->assertResponseIsSuccessful();
         $this->assertIsArray(json_decode($this->client->getResponse()->getContent(), true));
     }

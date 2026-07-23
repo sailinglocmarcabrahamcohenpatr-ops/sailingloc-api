@@ -29,10 +29,11 @@ class AvisController extends AbstractController
 
     #[OA\Get(
         path: '/api/avis',
-        summary: 'Lister tous les avis',
+        summary: 'Lister tous les avis (ADMIN — modération)',
         responses: [new OA\Response(response: 200, description: 'Liste des avis')]
     )]
     #[Route('', name: 'list', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
     public function list(): JsonResponse
     {
         return $this->json($this->repository->findAll(), Response::HTTP_OK, [], ['groups' => ['avis:read']]);
