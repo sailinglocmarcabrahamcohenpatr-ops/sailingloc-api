@@ -17,11 +17,11 @@ class Bateau
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::BIGINT)]
-    #[Groups(['bateau:read'])]
+    #[Groups(['bateau:read', 'avis:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['bateau:read'])]
+    #[Groups(['bateau:read', 'avis:read'])]
     private string $nomBateau;
 
     #[ORM\Column(length: 255)]
