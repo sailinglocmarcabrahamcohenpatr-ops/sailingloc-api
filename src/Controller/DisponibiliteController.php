@@ -173,7 +173,13 @@ class DisponibiliteController extends AbstractController
 
         if (isset($data['date_debut'])) $dispo->setDateDebut(new \DateTime($data['date_debut']));
         if (array_key_exists('date_fin', $data)) $dispo->setDateFin($data['date_fin'] ? new \DateTime($data['date_fin']) : null);
-        if (isset($data['statut'])) $dispo->setStatut($data['statut']);
+        if (isset($data['statut'])) {
+            $statut = StatutDisponibiliteEnum::tryFrom($data['statut']);
+            if ($statut === null) {
+                return $this->json(['message' => 'Statut invalide.', 'valeurs' => array_column(StatutDisponibiliteEnum::cases(), 'value')], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $dispo->setStatut($statut);
+        }
 
         $this->em->flush();
 
