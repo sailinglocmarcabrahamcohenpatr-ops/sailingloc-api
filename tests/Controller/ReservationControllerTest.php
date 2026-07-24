@@ -351,4 +351,81 @@ class ReservationControllerTest extends ApiTestCase
         $this->client->request('DELETE', "/api/reservations/{$resa->getId()}", [], [], $this->authHeader($proprietaireToken));
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
+
+    // ------------------------------------------------------------------ contrat PDF
+
+    public function testContratPdfRefuseSiAutreUtilisateur(): void
+    {
+        $resa = $this->createReservationFixture();
+        $this->client->request('GET', "/api/reservations/{$resa->getId()}/contrat", [], [], $this->authHeader($this->autreUserToken));
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testContratPdfInexistant(): void
+    {
+        $this->client->request('GET', '/api/reservations/99999/contrat', [], [], $this->authHeader($this->userToken));
+        $this->assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testContratPdfSuccesSiLocataire(): void
+    {
+        $resa = $this->createReservationFixture();
+        $this->client->request('GET', "/api/reservations/{$resa->getId()}/contrat", [], [], $this->authHeader($this->userToken));
+
+        $this->assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('attachment', $response->headers->get('Content-Disposition'));
+        // En-tête PDF standard : le fichier généré doit être un vrai PDF, pas juste du HTML renvoyé tel quel.
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    public function testContratPdfSuccesSiProprietaireDuBateau(): void
+    {
+        $proprietaireToken = $this->getToken('proprio.resa10@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $em          = $this->em();
+        $proprietaire = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprio.resa10@test.com']);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $contrat      = $this->createContrat();
+        $statut       = $this->createStatutReservation();
+
+        $resa = new Reservation();
+        $resa->setDateDebut(new \DateTime('2027-05-01'));
+        $resa->setDateFin(new \DateTime('2027-05-08'));
+        $resa->setMontantTotal('1050.00');
+        $resa->setBateau($bateau);
+        $resa->setUtilisateur($user);
+        $resa->setContrat($contrat);
+        $resa->setStatutReservation($statut);
+        $em->persist($resa);
+        $em->flush();
+
+        $this->client->request('GET', "/api/reservations/{$resa->getId()}/contrat", [], [], $this->authHeader($proprietaireToken));
+        $this->assertResponseIsSuccessful();
+        $this->assertSame('application/pdf', $this->client->getResponse()->headers->get('Content-Type'));
+    }
+
+    public function testContratPdfIntrouvableSansContrat(): void
+    {
+        $em          = $this->em();
+        $proprietaire = $this->createUtilisateur('proprio.resa11@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $statut       = $this->createStatutReservation();
+
+        $resa = new Reservation();
+        $resa->setDateDebut(new \DateTime('2027-06-01'));
+        $resa->setDateFin(new \DateTime('2027-06-08'));
+        $resa->setMontantTotal('1050.00');
+        $resa->setBateau($bateau);
+        $resa->setUtilisateur($user);
+        $resa->setStatutReservation($statut);
+        // Pas de contrat associé volontairement
+        $em->persist($resa);
+        $em->flush();
+
+        $this->client->request('GET', "/api/reservations/{$resa->getId()}/contrat", [], [], $this->authHeader($this->userToken));
+        $this->assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
 }
