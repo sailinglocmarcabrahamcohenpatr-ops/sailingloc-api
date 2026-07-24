@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Disponibilite;
+use App\Enum\StatutDisponibiliteEnum;
 use App\Repository\BateauRepository;
 use App\Repository\DisponibiliteRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -123,10 +124,15 @@ class DisponibiliteController extends AbstractController
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
+        $statut = StatutDisponibiliteEnum::tryFrom($data['statut'] ?? StatutDisponibiliteEnum::DISPONIBLE->value);
+        if ($statut === null) {
+            return $this->json(['message' => 'Statut invalide.', 'valeurs' => array_column(StatutDisponibiliteEnum::cases(), 'value')], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
         $dispo = new Disponibilite();
         $dispo->setDateDebut(new \DateTime($data['date_debut']));
         $dispo->setDateFin(isset($data['date_fin']) ? new \DateTime($data['date_fin']) : null);
-        $dispo->setStatut($data['statut'] ?? 'disponible');
+        $dispo->setStatut($statut);
         $dispo->setBateau($bateau);
 
         $errors = $this->validator->validate($dispo);
@@ -167,7 +173,13 @@ class DisponibiliteController extends AbstractController
 
         if (isset($data['date_debut'])) $dispo->setDateDebut(new \DateTime($data['date_debut']));
         if (array_key_exists('date_fin', $data)) $dispo->setDateFin($data['date_fin'] ? new \DateTime($data['date_fin']) : null);
-        if (isset($data['statut'])) $dispo->setStatut($data['statut']);
+        if (isset($data['statut'])) {
+            $statut = StatutDisponibiliteEnum::tryFrom($data['statut']);
+            if ($statut === null) {
+                return $this->json(['message' => 'Statut invalide.', 'valeurs' => array_column(StatutDisponibiliteEnum::cases(), 'value')], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            $dispo->setStatut($statut);
+        }
 
         $this->em->flush();
 

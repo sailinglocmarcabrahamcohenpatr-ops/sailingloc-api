@@ -133,4 +133,37 @@ class DisponibiliteControllerTest extends ApiTestCase
         $this->client->request('DELETE', "/api/disponibilites/{$dispo->getId()}", [], [], $this->authHeader($this->proprietaireToken));
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
+
+    // ------------------------------------------------------------------ statut : string -> enum (bug de crash corrigé)
+
+    public function testCreateAvecStatutInvalideRenvoie422EtNePlanteJamais(): void
+    {
+        $em           = $this->em();
+        $proprietaire = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprio.dispo@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+
+        $this->client->request(
+            'POST', '/api/disponibilites', [], [],
+            $this->jsonHeader($this->proprietaireToken),
+            json_encode([
+                'date_debut' => '2026-09-01',
+                'statut'     => 'valeur_qui_nexiste_pas',
+                'id_bateau'  => $bateau->getId(),
+            ])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testUpdateAvecStatutInvalideRenvoie422EtNePlanteJamais(): void
+    {
+        $dispo = $this->createDispoFixture();
+        $this->client->request(
+            'PATCH', "/api/disponibilites/{$dispo->getId()}", [], [],
+            $this->jsonHeader($this->proprietaireToken),
+            json_encode(['statut' => 'valeur_qui_nexiste_pas'])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
 }
