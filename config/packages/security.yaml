@@ -47,6 +47,9 @@ security:
         - { path: ^/api/ports,               roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/referentiels,        roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/disponibilites,      roles: PUBLIC_ACCESS, methods: [GET] }
+        # Avis d'un bateau : lecture publique (fiche bateau) ; /api/avis (liste globale)
+        # et /api/avis/mine restent verrouillés par leurs propres #[IsGranted] au niveau du contrôleur.
+        - { path: ^/api/avis,                roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api,                     roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Bateau;
 use App\Enum\StatutBateauEnum;
+use App\Repository\AvisRepository;
 use App\Repository\BateauRepository;
 use App\Repository\PortRepository;
 use App\Repository\TypeBateauRepository;
@@ -26,8 +27,22 @@ class BateauController extends AbstractController
         private readonly BateauRepository $repository,
         private readonly PortRepository $portRepository,
         private readonly TypeBateauRepository $typeBateauRepository,
+        private readonly AvisRepository $avisRepository,
         private readonly ValidatorInterface $validator,
     ) {}
+
+    /** @param Bateau[] $bateaux */
+    private function hydraterNotes(array $bateaux): void
+    {
+        $ids = array_map(fn(Bateau $b) => $b->getId(), $bateaux);
+        $aggregats = $this->avisRepository->findAggregateByBateauIds($ids);
+
+        foreach ($bateaux as $bateau) {
+            $agg = $aggregats[$bateau->getId()] ?? null;
+            $bateau->setNoteMoyenne($agg['moyenne'] ?? 0.0);
+            $bateau->setNombreAvis($agg['total'] ?? 0);
+        }
+    }
 
     #[OA\Get(
         path: '/api/bateaux',
@@ -49,6 +64,7 @@ class BateauController extends AbstractController
         $limit          = min(100, max(1, (int) $request->query->get('limit', 20)));
 
         $result = $this->repository->findPaginated($page, $limit, $statut, $proprietaireId);
+        $this->hydraterNotes($result['items']);
 
         return $this->json([
             'data'       => $result['items'],
@@ -78,6 +94,8 @@ class BateauController extends AbstractController
         if (!$bateau) {
             return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
         }
+
+        $this->hydraterNotes([$bateau]);
 
         return $this->json($bateau, Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
     }

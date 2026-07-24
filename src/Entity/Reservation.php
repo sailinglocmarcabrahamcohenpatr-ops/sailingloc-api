@@ -60,6 +60,7 @@ class Reservation
     private Collection $paiements;
 
     #[ORM\OneToMany(targetEntity: Avis::class, mappedBy: 'reservation')]
+    #[Groups(['reservation:read'])]
     private Collection $avis;
 
     public function __construct()

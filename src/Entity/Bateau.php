@@ -105,6 +105,14 @@ class Bateau
     #[Groups(['bateau:read'])]
     private Collection $documents;
 
+    /** Champ non persisté : moyenne des avis, calculée et injectée par BateauController (jamais stockée en base). */
+    #[Groups(['bateau:read'])]
+    private float $noteMoyenne = 0.0;
+
+    /** Champ non persisté : nombre d'avis, calculé et injecté par BateauController (jamais stocké en base). */
+    #[Groups(['bateau:read'])]
+    private int $nombreAvis = 0;
+
     public function __construct()
     {
         $this->disponibilites = new ArrayCollection();
@@ -353,6 +361,30 @@ class Bateau
                 $document->setBateau(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getNoteMoyenne(): float
+    {
+        return $this->noteMoyenne;
+    }
+
+    public function setNoteMoyenne(float $noteMoyenne): static
+    {
+        $this->noteMoyenne = $noteMoyenne;
+
+        return $this;
+    }
+
+    public function getNombreAvis(): int
+    {
+        return $this->nombreAvis;
+    }
+
+    public function setNombreAvis(int $nombreAvis): static
+    {
+        $this->nombreAvis = $nombreAvis;
 
         return $this;
     }
