@@ -35,4 +35,34 @@ class ReservationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /** @return Reservation[] Réservations où l'utilisateur est le locataire OU le propriétaire du bateau réservé. */
+    public function findForUtilisateurOuProprietaire(int $utilisateurId): array
+    {
+        return $this->createQueryBuilder('r')
+            ->join('r.bateau', 'b')
+            ->andWhere('r.utilisateur = :id OR b.proprietaire = :id')
+            ->setParameter('id', $utilisateurId)
+            ->orderBy('r.dateReservation', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return Reservation[] Réservations existantes qui chevauchent la période donnée pour ce bateau. */
+    public function findOverlapping(int $bateauId, \DateTimeInterface $debut, \DateTimeInterface $fin, ?int $excludeId = null): array
+    {
+        $qb = $this->createQueryBuilder('r')
+            ->andWhere('r.bateau = :bateauId')
+            ->andWhere('r.dateDebut < :fin')
+            ->andWhere('r.dateFin > :debut')
+            ->setParameter('bateauId', $bateauId)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin);
+
+        if ($excludeId !== null) {
+            $qb->andWhere('r.id != :excludeId')->setParameter('excludeId', $excludeId);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

@@ -138,6 +138,9 @@ class DocumentController extends AbstractController
             if (!$bateau) {
                 return $this->json(['message' => 'Bateau introuvable.'], Response::HTTP_NOT_FOUND);
             }
+            if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+                return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+            }
             $document->setBateau($bateau);
         }
 
