@@ -146,7 +146,14 @@ class BateauController extends AbstractController
         $bateau->setTaille($data['taille'] ?? '');
         $bateau->setAvecSkipper((bool) ($data['avec_skipper'] ?? false));
         $bateau->setDescription($data['description'] ?? null);
-        $bateau->setStatut(StatutBateauEnum::from($data['statut'] ?? StatutBateauEnum::EN_ATTENTE_VALIDATION->value));
+        $statutDemande = StatutBateauEnum::tryFrom($data['statut'] ?? StatutBateauEnum::EN_ATTENTE_VALIDATION->value)
+            ?? StatutBateauEnum::EN_ATTENTE_VALIDATION;
+        // Un propriétaire ne peut pas s'auto-valider : toute annonce créée par un non-admin
+        // part obligatoirement en attente de validation, quel que soit le statut envoyé.
+        if (!$this->isGranted('ROLE_ADMIN') && $statutDemande !== StatutBateauEnum::EN_ATTENTE_VALIDATION) {
+            $statutDemande = StatutBateauEnum::EN_ATTENTE_VALIDATION;
+        }
+        $bateau->setStatut($statutDemande);
         $bateau->setPrixJour((string) ($data['prix_jour'] ?? '0'));
         $bateau->setPrixHeure(isset($data['prix_heure']) ? (string) $data['prix_heure'] : null);
         $bateau->setPermisRequis((bool) ($data['permis_requis'] ?? false));
@@ -203,6 +210,13 @@ class BateauController extends AbstractController
             $statut = StatutBateauEnum::tryFrom($data['statut']);
             if ($statut === null) {
                 return $this->json(['message' => 'Statut invalide.', 'valeurs' => array_column(StatutBateauEnum::cases(), 'value')], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+            // Seul un ADMIN peut faire sortir un bateau de la validation initiale (auto-approbation interdite).
+            // Une fois validé, le propriétaire garde la main pour basculer disponible/suspendu/maintenance.
+            $sortDeValidation = $bateau->getStatut() === StatutBateauEnum::EN_ATTENTE_VALIDATION
+                && $statut !== StatutBateauEnum::EN_ATTENTE_VALIDATION;
+            if (!$this->isGranted('ROLE_ADMIN') && $sortDeValidation) {
+                return $this->json(['message' => 'Seul un administrateur peut valider la publication d\'un bateau.'], Response::HTTP_FORBIDDEN);
             }
             $bateau->setStatut($statut);
         }

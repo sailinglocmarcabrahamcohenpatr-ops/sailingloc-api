@@ -123,6 +123,83 @@ class BateauControllerTest extends ApiTestCase
         $this->client->request('DELETE', "/api/bateaux/{$bateau->getId()}", [], [], $this->authHeader($this->proprietaireToken));
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
+
+    // ------------------------------------------------------------------ anti auto-validation (bug de sécurité corrigé)
+
+    public function testCreateForceEnAttenteValidationMemeSiStatutDisponibleEnvoye(): void
+    {
+        $port = $this->createPort();
+        $type = $this->createTypeBateau();
+        $user = $this->em()->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprietaire@test.com']);
+
+        $this->client->request(
+            'POST', '/api/bateaux', [], [],
+            $this->jsonHeader($this->proprietaireToken),
+            json_encode([
+                'nom_bateau'     => 'Auto-validation tentée',
+                'motorisation'   => 'Voile',
+                'taille'         => '10m',
+                'prix_jour'      => '100',
+                'statut'         => 'disponible', // tentative de contourner la modération
+                'id_port'        => $port->getId(),
+                'id_utilisateur' => $user->getId(),
+                'id_type_bateau' => $type->getId(),
+            ])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('en attente de validation', $data['statut']);
+    }
+
+    public function testUpdateRefuseAutoValidationParProprietaire(): void
+    {
+        $proprietaire = $this->em()->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprietaire@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $bateau->setStatut(\App\Enum\StatutBateauEnum::EN_ATTENTE_VALIDATION);
+        $this->em()->flush();
+
+        $this->client->request(
+            'PUT', "/api/bateaux/{$bateau->getId()}", [], [],
+            $this->jsonHeader($this->proprietaireToken),
+            json_encode(['statut' => 'disponible'])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testUpdateAutoriseToggleDisponibleSuspenduApresValidationAdmin(): void
+    {
+        $proprietaire = $this->em()->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprietaire@test.com']);
+        $bateau       = $this->createBateau($proprietaire); // createBateau() met déjà le statut à 'disponible'
+
+        $this->client->request(
+            'PATCH', "/api/bateaux/{$bateau->getId()}", [], [],
+            $this->jsonHeader($this->proprietaireToken),
+            json_encode(['statut' => 'suspendu'])
+        );
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('suspendu', $data['statut']);
+    }
+
+    public function testUpdateStatutAutoriseParAdminMemeDepuisEnAttenteValidation(): void
+    {
+        $adminToken   = $this->getToken('admin.bateau@test.com', 'password', \App\Enum\RoleEnum::ADMIN);
+        $proprietaire = $this->em()->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprietaire@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $bateau->setStatut(\App\Enum\StatutBateauEnum::EN_ATTENTE_VALIDATION);
+        $this->em()->flush();
+
+        $this->client->request(
+            'PUT', "/api/bateaux/{$bateau->getId()}", [], [],
+            $this->jsonHeader($adminToken),
+            json_encode(['statut' => 'disponible'])
+        );
+
+        $this->assertResponseIsSuccessful();
+    }
 }
 
 
