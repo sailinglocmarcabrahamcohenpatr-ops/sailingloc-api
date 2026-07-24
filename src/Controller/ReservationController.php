@@ -2,6 +2,8 @@
 
 namespace App\Controller;
 
+use App\Entity\Bateau;
+use App\Entity\Contrat;
 use App\Entity\Reservation;
 use App\Repository\BateauRepository;
 use App\Repository\ContratRepository;
@@ -22,6 +24,9 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 #[Route('/api/reservations', name: 'api_reservations_')]
 class ReservationController extends AbstractController
 {
+    /** Doit rester alignée avec SERVICE_FEE_RATE côté frontend (shared/config). */
+    private const SERVICE_FEE_RATE = 0.069;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ReservationRepository $repository,
@@ -31,6 +36,16 @@ class ReservationController extends AbstractController
         private readonly StatutReservationRepository $statutRepository,
         private readonly ValidatorInterface $validator,
     ) {}
+
+    /** Calcule le montant total (sous-total + frais de service) à partir du prix/jour réel du bateau. */
+    private function calculerMontantTotal(Bateau $bateau, \DateTimeInterface $debut, \DateTimeInterface $fin): string
+    {
+        $jours = max(1, (int) $debut->diff($fin)->days);
+        $sousTotal = ((float) $bateau->getPrixJour()) * $jours;
+        $fraisService = round($sousTotal * self::SERVICE_FEE_RATE);
+
+        return (string) ($sousTotal + $fraisService);
+    }
 
     #[OA\Get(
         path: '/api/reservations',
@@ -95,14 +110,13 @@ class ReservationController extends AbstractController
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['date_debut', 'date_fin', 'montant_total', 'id_bateau', 'id_utilisateur', 'id_contrat', 'id_statut_reservation'],
+                required: ['date_debut', 'date_fin', 'id_bateau', 'id_utilisateur', 'id_statut_reservation'],
                 properties: [
                     new OA\Property(property: 'date_debut', type: 'string', format: 'date', example: '2026-07-01'),
                     new OA\Property(property: 'date_fin', type: 'string', format: 'date', example: '2026-07-07'),
-                    new OA\Property(property: 'montant_total', type: 'number', example: 1750),
                     new OA\Property(property: 'id_bateau', type: 'integer', example: 1),
                     new OA\Property(property: 'id_utilisateur', type: 'integer', example: 2),
-                    new OA\Property(property: 'id_contrat', type: 'integer', example: 1),
+                    new OA\Property(property: 'id_contrat', type: 'integer', nullable: true, description: 'Optionnel — un contrat par défaut est créé si absent'),
                     new OA\Property(property: 'id_statut_reservation', type: 'integer', example: 1),
                 ]
             )
@@ -110,6 +124,7 @@ class ReservationController extends AbstractController
         responses: [
             new OA\Response(response: 201, description: 'Réservation créée'),
             new OA\Response(response: 400, description: 'Données invalides'),
+            new OA\Response(response: 409, description: 'Bateau déjà réservé sur cette période'),
         ]
     )]
     #[Route('', name: 'create', methods: ['POST'])]
@@ -121,7 +136,7 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $required = ['date_debut', 'date_fin', 'montant_total', 'id_bateau', 'id_utilisateur', 'id_contrat', 'id_statut_reservation'];
+        $required = ['date_debut', 'date_fin', 'id_bateau', 'id_utilisateur', 'id_statut_reservation'];
         $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
         if ($missing) {
             return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
@@ -129,17 +144,42 @@ class ReservationController extends AbstractController
 
         $bateau = $this->bateauRepository->find($data['id_bateau']);
         $utilisateur = $this->utilisateurRepository->find($data['id_utilisateur']);
-        $contrat = $this->contratRepository->find($data['id_contrat']);
         $statut = $this->statutRepository->find($data['id_statut_reservation']);
 
-        if (!$bateau || !$utilisateur || !$contrat || !$statut) {
-            return $this->json(['message' => 'Bateau, utilisateur, contrat ou statut introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!$bateau || !$utilisateur || !$statut) {
+            return $this->json(['message' => 'Bateau, utilisateur ou statut introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (!empty($data['id_contrat'])) {
+            $contrat = $this->contratRepository->find($data['id_contrat']);
+            if (!$contrat) {
+                return $this->json(['message' => 'Contrat introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        } else {
+            // Aucun contrat fourni (cas normal du tunnel de réservation, qui n'expose pas
+            // encore d'étape de signature) : on en crée un par défaut plutôt que de bloquer la réservation.
+            $contrat = new Contrat();
+            $contrat->setConditions('Conditions générales de location SailingLoc.');
+            $contrat->setAssuranceIncluse(true);
+            $this->em->persist($contrat);
+        }
+
+        $dateDebut = new \DateTime($data['date_debut']);
+        $dateFin = new \DateTime($data['date_fin']);
+        if ($dateFin <= $dateDebut) {
+            return $this->json(['message' => 'La date de fin doit être postérieure à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (count($this->repository->findOverlapping($bateau->getId(), $dateDebut, $dateFin)) > 0) {
+            return $this->json(['message' => 'Ce bateau est déjà réservé sur une partie de cette période.'], Response::HTTP_CONFLICT);
         }
 
         $reservation = new Reservation();
-        $reservation->setDateDebut(new \DateTime($data['date_debut']));
-        $reservation->setDateFin(new \DateTime($data['date_fin']));
-        $reservation->setMontantTotal((string) ($data['montant_total'] ?? '0'));
+        $reservation->setDateDebut($dateDebut);
+        $reservation->setDateFin($dateFin);
+        // Le montant est toujours recalculé côté serveur à partir du prix/jour réel du bateau :
+        // le montant envoyé par le client n'est jamais fiable (cf. bug prix manipulable).
+        $reservation->setMontantTotal($this->calculerMontantTotal($bateau, $dateDebut, $dateFin));
         $reservation->setBateau($bateau);
         $reservation->setUtilisateur($utilisateur);
         $reservation->setContrat($contrat);

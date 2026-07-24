@@ -134,4 +134,95 @@ class ReservationControllerTest extends ApiTestCase
         $this->client->request('DELETE', "/api/reservations/{$resa->getId()}", [], [], $this->authHeader($this->adminToken));
         $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
     }
+
+    // ------------------------------------------------------------------ id_contrat optionnel (bug bloquant corrigé)
+
+    public function testCreateSansIdContratCreeUnContratParDefaut(): void
+    {
+        $em          = $this->em();
+        $proprietaire = $this->createUtilisateur('proprio.resa3@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $statut       = $this->createStatutReservation();
+
+        $this->client->request(
+            'POST', '/api/reservations', [], [],
+            $this->jsonHeader($this->userToken),
+            json_encode([
+                'date_debut'            => '2026-10-01',
+                'date_fin'              => '2026-10-08',
+                'id_bateau'             => $bateau->getId(),
+                'id_utilisateur'        => $user->getId(),
+                'id_statut_reservation' => $statut->getId(),
+            ])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertArrayHasKey('id', $data);
+    }
+
+    public function testCreateRecalculeLeMontantDepuisLePrixReelDuBateau(): void
+    {
+        $em          = $this->em();
+        $proprietaire = $this->createUtilisateur('proprio.resa4@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire); // prix_jour = 150.00 (cf. ApiTestCase::createBateau)
+        $statut       = $this->createStatutReservation();
+
+        $this->client->request(
+            'POST', '/api/reservations', [], [],
+            $this->jsonHeader($this->userToken),
+            json_encode([
+                'date_debut'            => '2026-11-01',
+                'date_fin'              => '2026-11-08', // 7 jours
+                'montant_total'         => '1', // valeur volontairement absurde, doit être ignorée
+                'id_bateau'             => $bateau->getId(),
+                'id_utilisateur'        => $user->getId(),
+                'id_statut_reservation' => $statut->getId(),
+            ])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        // 150 * 7 = 1050, + 6.9% de frais de service = 1121 (arrondi)
+        $this->assertEquals(1121.0, (float) $data['montantTotal']);
+    }
+
+    public function testCreateRefuseChevauchementDeDates(): void
+    {
+        $em          = $this->em();
+        $proprietaire = $this->createUtilisateur('proprio.resa5@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $autre        = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'autre.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $statut       = $this->createStatutReservation();
+
+        $this->client->request(
+            'POST', '/api/reservations', [], [],
+            $this->jsonHeader($this->userToken),
+            json_encode([
+                'date_debut'            => '2026-12-01',
+                'date_fin'              => '2026-12-10',
+                'id_bateau'             => $bateau->getId(),
+                'id_utilisateur'        => $user->getId(),
+                'id_statut_reservation' => $statut->getId(),
+            ])
+        );
+        $this->assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        // Chevauchement partiel avec la réservation précédente (01-10 décembre)
+        $this->client->request(
+            'POST', '/api/reservations', [], [],
+            $this->jsonHeader($this->userToken),
+            json_encode([
+                'date_debut'            => '2026-12-05',
+                'date_fin'              => '2026-12-15',
+                'id_bateau'             => $bateau->getId(),
+                'id_utilisateur'        => $autre->getId(),
+                'id_statut_reservation' => $statut->getId(),
+            ])
+        );
+        $this->assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+    }
 }

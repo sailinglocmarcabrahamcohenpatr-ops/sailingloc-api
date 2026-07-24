@@ -35,4 +35,22 @@ class ReservationRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /** @return Reservation[] Réservations existantes qui chevauchent la période donnée pour ce bateau. */
+    public function findOverlapping(int $bateauId, \DateTimeInterface $debut, \DateTimeInterface $fin, ?int $excludeId = null): array
+    {
+        $qb = $this->createQueryBuilder('r')
+            ->andWhere('r.bateau = :bateauId')
+            ->andWhere('r.dateDebut < :fin')
+            ->andWhere('r.dateFin > :debut')
+            ->setParameter('bateauId', $bateauId)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin);
+
+        if ($excludeId !== null) {
+            $qb->andWhere('r.id != :excludeId')->setParameter('excludeId', $excludeId);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }
