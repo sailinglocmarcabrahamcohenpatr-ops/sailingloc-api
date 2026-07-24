@@ -62,11 +62,11 @@ class ReservationController extends AbstractController
         $utilisateurId = $request->query->get('utilisateur');
         $bateauId = $request->query->get('bateau');
 
-        // Non-admin : force le filtre sur ses propres réservations
+        // Non-admin : réservations où l'utilisateur est locataire OU propriétaire du bateau réservé
         if (!$this->isGranted('ROLE_ADMIN')) {
             /** @var \App\Entity\Utilisateur $currentUser */
             $currentUser = $this->getUser();
-            $reservations = $this->repository->findByUtilisateur($currentUser->getId());
+            $reservations = $this->repository->findForUtilisateurOuProprietaire($currentUser->getId());
         } elseif ($utilisateurId) {
             $reservations = $this->repository->findByUtilisateur((int) $utilisateurId);
         } elseif ($bateauId) {
@@ -97,7 +97,10 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
         }
 
-        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getUtilisateur() !== $this->getUser()) {
+        $user = $this->getUser();
+        $estLocataire = $reservation->getUtilisateur() === $user;
+        $estProprietaireBateau = $reservation->getBateau()->getProprietaire() === $user;
+        if (!$this->isGranted('ROLE_ADMIN') && !$estLocataire && !$estProprietaireBateau) {
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
@@ -198,12 +201,13 @@ class ReservationController extends AbstractController
 
     #[OA\Put(
         path: '/api/reservations/{id}',
-        summary: 'Modifier une réservation (propriétaire ou ADMIN)',
+        summary: 'Modifier une réservation — confirmer/refuser un statut, changer les dates (propriétaire du bateau ou ADMIN)',
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
         responses: [
             new OA\Response(response: 200, description: 'Mise à jour réussie'),
             new OA\Response(response: 403, description: 'Accès refusé'),
             new OA\Response(response: 404, description: 'Non trouvée'),
+            new OA\Response(response: 409, description: 'Bateau déjà réservé sur cette période'),
         ]
     )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
@@ -215,15 +219,31 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
         }
 
-        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getUtilisateur() !== $this->getUser()) {
+        // Seul le propriétaire du bateau (ou un ADMIN) décide des dates/du statut d'une réservation —
+        // le locataire ne peut que l'annuler (DELETE), jamais la modifier lui-même.
+        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getBateau()->getProprietaire() !== $this->getUser()) {
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
         $data = json_decode($request->getContent(), true);
 
-        if (isset($data['date_debut'])) $reservation->setDateDebut(new \DateTime($data['date_debut']));
-        if (isset($data['date_fin'])) $reservation->setDateFin(new \DateTime($data['date_fin']));
-        if (isset($data['montant_total'])) $reservation->setMontantTotal((string) $data['montant_total']);
+        if (isset($data['date_debut']) || isset($data['date_fin'])) {
+            $dateDebut = isset($data['date_debut']) ? new \DateTime($data['date_debut']) : $reservation->getDateDebut();
+            $dateFin = isset($data['date_fin']) ? new \DateTime($data['date_fin']) : $reservation->getDateFin();
+
+            if ($dateFin <= $dateDebut) {
+                return $this->json(['message' => 'La date de fin doit être postérieure à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            if (count($this->repository->findOverlapping($reservation->getBateau()->getId(), $dateDebut, $dateFin, $reservation->getId())) > 0) {
+                return $this->json(['message' => 'Ce bateau est déjà réservé sur une partie de cette période.'], Response::HTTP_CONFLICT);
+            }
+
+            $reservation->setDateDebut($dateDebut);
+            $reservation->setDateFin($dateFin);
+            // Les dates changent : le montant recalculé côté serveur remplace l'ancien, jamais une valeur envoyée par le client.
+            $reservation->setMontantTotal($this->calculerMontantTotal($reservation->getBateau(), $dateDebut, $dateFin));
+        }
 
         if (isset($data['id_statut_reservation'])) {
             $statut = $this->statutRepository->find($data['id_statut_reservation']);
@@ -243,7 +263,7 @@ class ReservationController extends AbstractController
 
     #[OA\Delete(
         path: '/api/reservations/{id}',
-        summary: 'Annuler une réservation (propriétaire ou ADMIN)',
+        summary: 'Annuler une réservation (son locataire, le propriétaire du bateau, ou ADMIN)',
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
         responses: [
             new OA\Response(response: 204, description: 'Supprimée'),
@@ -260,7 +280,12 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
         }
 
-        if (!$this->isGranted('ROLE_ADMIN') && $reservation->getUtilisateur() !== $this->getUser()) {
+        $user = $this->getUser();
+        $estLocataire = $reservation->getUtilisateur() === $user;
+        $estProprietaireBateau = $reservation->getBateau()->getProprietaire() === $user;
+        // Le locataire annule sa propre réservation ; le propriétaire du bateau refuse/annule
+        // une réservation faite sur l'un de ses bateaux — les deux passent par la même action.
+        if (!$this->isGranted('ROLE_ADMIN') && !$estLocataire && !$estProprietaireBateau) {
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 

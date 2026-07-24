@@ -225,4 +225,130 @@ class ReservationControllerTest extends ApiTestCase
         );
         $this->assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
     }
+
+    // ------------------------------------------------------------------ propriétaire du bateau (bug d'autorisation corrigé)
+
+    public function testListInclutLesReservationsSurSesPropresBateaux(): void
+    {
+        $proprietaireToken = $this->getToken('proprio.resa6@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $em          = $this->em();
+        $proprietaire = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprio.resa6@test.com']);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $contrat      = $this->createContrat();
+        $statut       = $this->createStatutReservation();
+
+        $resa = new Reservation();
+        $resa->setDateDebut(new \DateTime('2027-01-01'));
+        $resa->setDateFin(new \DateTime('2027-01-07'));
+        $resa->setMontantTotal('1050.00');
+        $resa->setBateau($bateau);
+        $resa->setUtilisateur($user);
+        $resa->setContrat($contrat);
+        $resa->setStatutReservation($statut);
+        $em->persist($resa);
+        $em->flush();
+
+        $this->client->request('GET', '/api/reservations', [], [], $this->authHeader($proprietaireToken));
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $ids = array_column($data, 'id');
+        $this->assertContains($resa->getId(), $ids);
+    }
+
+    public function testShowSuccesSiProprietaireDuBateau(): void
+    {
+        $proprietaireToken = $this->getToken('proprio.resa7@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $em          = $this->em();
+        $proprietaire = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprio.resa7@test.com']);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $contrat      = $this->createContrat();
+        $statut       = $this->createStatutReservation();
+
+        $resa = new Reservation();
+        $resa->setDateDebut(new \DateTime('2027-02-01'));
+        $resa->setDateFin(new \DateTime('2027-02-07'));
+        $resa->setMontantTotal('1050.00');
+        $resa->setBateau($bateau);
+        $resa->setUtilisateur($user);
+        $resa->setContrat($contrat);
+        $resa->setStatutReservation($statut);
+        $em->persist($resa);
+        $em->flush();
+
+        $this->client->request('GET', "/api/reservations/{$resa->getId()}", [], [], $this->authHeader($proprietaireToken));
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testUpdateRefuseSiLocataire(): void
+    {
+        $resa = $this->createReservationFixture();
+
+        $this->client->request(
+            'PUT', "/api/reservations/{$resa->getId()}", [], [],
+            $this->jsonHeader($this->userToken), // userToken = le locataire de la fixture
+            json_encode(['id_statut_reservation' => $resa->getStatutReservation()->getId()])
+        );
+
+        $this->assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+    }
+
+    public function testUpdateSuccesSiProprietaireDuBateauConfirmeLeStatut(): void
+    {
+        $proprietaireToken = $this->getToken('proprio.resa8@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $em          = $this->em();
+        $proprietaire = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprio.resa8@test.com']);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $contrat      = $this->createContrat();
+        $statutInitial = $this->createStatutReservation('En attente');
+        $statutConfirme = $this->createStatutReservation('Confirmée');
+
+        $resa = new Reservation();
+        $resa->setDateDebut(new \DateTime('2027-03-01'));
+        $resa->setDateFin(new \DateTime('2027-03-07'));
+        $resa->setMontantTotal('1050.00');
+        $resa->setBateau($bateau);
+        $resa->setUtilisateur($user);
+        $resa->setContrat($contrat);
+        $resa->setStatutReservation($statutInitial);
+        $em->persist($resa);
+        $em->flush();
+
+        $this->client->request(
+            'PUT', "/api/reservations/{$resa->getId()}", [], [],
+            $this->jsonHeader($proprietaireToken),
+            json_encode(['id_statut_reservation' => $statutConfirme->getId()])
+        );
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('Confirmée', $data['statutReservation']['labelStatutReservation']);
+    }
+
+    public function testDeleteSuccesSiProprietaireDuBateau(): void
+    {
+        $proprietaireToken = $this->getToken('proprio.resa9@test.com', 'password', RoleEnum::PROPRIETAIRE);
+        $em          = $this->em();
+        $proprietaire = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'proprio.resa9@test.com']);
+        $user         = $em->getRepository(\App\Entity\Utilisateur::class)->findOneBy(['email' => 'user.resa@test.com']);
+        $bateau       = $this->createBateau($proprietaire);
+        $contrat      = $this->createContrat();
+        $statut       = $this->createStatutReservation();
+
+        $resa = new Reservation();
+        $resa->setDateDebut(new \DateTime('2027-04-01'));
+        $resa->setDateFin(new \DateTime('2027-04-07'));
+        $resa->setMontantTotal('1050.00');
+        $resa->setBateau($bateau);
+        $resa->setUtilisateur($user);
+        $resa->setContrat($contrat);
+        $resa->setStatutReservation($statut);
+        $em->persist($resa);
+        $em->flush();
+
+        $this->client->request('DELETE', "/api/reservations/{$resa->getId()}", [], [], $this->authHeader($proprietaireToken));
+        $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
 }
