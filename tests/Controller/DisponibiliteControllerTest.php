@@ -4,6 +4,7 @@ namespace App\Tests\Controller;
 
 use App\Entity\Disponibilite;
 use App\Enum\RoleEnum;
+use App\Enum\StatutDisponibiliteEnum;
 use App\Tests\ApiTestCase;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,7 +31,7 @@ class DisponibiliteControllerTest extends ApiTestCase
         $dispo = new Disponibilite();
         $dispo->setDateDebut(new \DateTime('2026-07-01'));
         $dispo->setDateFin(new \DateTime('2026-07-31'));
-        $dispo->setStatut('disponible');
+        $dispo->setStatut(StatutDisponibiliteEnum::DISPONIBLE);
         $dispo->setBateau($bateau);
         $em->persist($dispo);
         $em->flush();

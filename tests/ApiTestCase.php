@@ -9,8 +9,11 @@ use App\Entity\Port;
 use App\Entity\StatutPaiement;
 use App\Entity\StatutReservation;
 use App\Entity\TypeBateau;
+use App\Entity\TypeDocument;
 use App\Entity\Utilisateur;
 use App\Enum\RoleEnum;
+use App\Enum\StatutBateauEnum;
+use App\Enum\StatutContratEnum;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -147,7 +150,7 @@ abstract class ApiTestCase extends WebTestCase
         $bateau->setMotorisation('Voile');
         $bateau->setTaille('10m');
         $bateau->setAvecSkipper(false);
-        $bateau->setStatut('disponible');
+        $bateau->setStatut(StatutBateauEnum::DISPONIBLE);
         $bateau->setPrixJour('150.00');
         $bateau->setPort($port);
         $bateau->setProprietaire($proprietaire);
@@ -173,13 +176,28 @@ abstract class ApiTestCase extends WebTestCase
         return $statut;
     }
 
+    protected function createTypeDocument(string $label = 'Carte identité'): TypeDocument
+    {
+        $em   = $this->em();
+        $type = $em->getRepository(TypeDocument::class)->findOneBy(['labelTypeDocument' => $label]);
+
+        if (!$type) {
+            $type = new TypeDocument();
+            $type->setLabelTypeDocument($label);
+            $em->persist($type);
+            $em->flush();
+        }
+
+        return $type;
+    }
+
     protected function createContrat(): Contrat
     {
         $em     = $this->em();
         $contrat = new Contrat();
         $contrat->setConditions('Conditions générales de test.');
         $contrat->setAssuranceIncluse(false);
-        $contrat->setStatutContrat('actif');
+        $contrat->setStatutContrat(StatutContratEnum::SIGNE);
         $em->persist($contrat);
         $em->flush();
 
