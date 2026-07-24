@@ -65,4 +65,42 @@ class ReservationRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /** Nombre de réservations à venir sur les bateaux d'un propriétaire. */
+    public function countAVenirPourProprietaire(int $proprietaireId): int
+    {
+        return (int) $this->createQueryBuilder('r')
+            ->select('COUNT(r.id)')
+            ->join('r.bateau', 'b')
+            ->andWhere('b.proprietaire = :prop')
+            ->andWhere('r.dateDebut > :maintenant')
+            ->setParameter('prop', $proprietaireId)
+            ->setParameter('maintenant', new \DateTime())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Réservations sur les bateaux donnés qui chevauchent la période — utilisé pour
+     * calculer un taux d'occupation (jours réservés / jours disponibles sur la période).
+     *
+     * @param int[] $bateauIds
+     * @return Reservation[]
+     */
+    public function findChevauchantPeriodePourBateaux(array $bateauIds, \DateTimeInterface $debut, \DateTimeInterface $fin): array
+    {
+        if (!$bateauIds) {
+            return [];
+        }
+
+        return $this->createQueryBuilder('r')
+            ->andWhere('r.bateau IN (:bateauIds)')
+            ->andWhere('r.dateDebut < :fin')
+            ->andWhere('r.dateFin > :debut')
+            ->setParameter('bateauIds', $bateauIds)
+            ->setParameter('debut', $debut)
+            ->setParameter('fin', $fin)
+            ->getQuery()
+            ->getResult();
+    }
 }
