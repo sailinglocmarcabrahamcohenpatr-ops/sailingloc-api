@@ -11,6 +11,7 @@ use App\Entity\StatutReservation;
 use App\Entity\TypeBateau;
 use App\Entity\Utilisateur;
 use App\Enum\RoleEnum;
+use App\Enum\StatutBateauEnum;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -147,7 +148,7 @@ abstract class ApiTestCase extends WebTestCase
         $bateau->setMotorisation('Voile');
         $bateau->setTaille('10m');
         $bateau->setAvecSkipper(false);
-        $bateau->setStatut('disponible');
+        $bateau->setStatut(StatutBateauEnum::DISPONIBLE);
         $bateau->setPrixJour('150.00');
         $bateau->setPort($port);
         $bateau->setProprietaire($proprietaire);
