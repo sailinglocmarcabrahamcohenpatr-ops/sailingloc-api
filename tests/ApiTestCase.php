@@ -13,6 +13,7 @@ use App\Entity\TypeDocument;
 use App\Entity\Utilisateur;
 use App\Enum\RoleEnum;
 use App\Enum\StatutBateauEnum;
+use App\Enum\StatutCompteEnum;
 use App\Enum\StatutContratEnum;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -42,7 +43,7 @@ abstract class ApiTestCase extends WebTestCase
             $user->setPrenom('User');
             $user->setEmail($email);
             $user->setPassword($hasher->hashPassword($user, $password));
-            $user->setStatutCompte('actif');
+            $user->setStatutCompte(StatutCompteEnum::ACTIF);
             if ($role !== RoleEnum::USER) {
                 $user->addRole($role);
             }
@@ -96,7 +97,7 @@ abstract class ApiTestCase extends WebTestCase
             $user->setPrenom('User');
             $user->setEmail($email);
             $user->setPassword($hasher->hashPassword($user, $password));
-            $user->setStatutCompte('actif');
+            $user->setStatutCompte(StatutCompteEnum::ACTIF);
             if ($role !== RoleEnum::USER) {
                 $user->addRole($role);
             }
