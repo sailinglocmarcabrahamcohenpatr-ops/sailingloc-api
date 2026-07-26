@@ -102,7 +102,6 @@ class Bateau
     private Collection $reservations;
 
     #[ORM\OneToMany(targetEntity: Document::class, mappedBy: 'bateau', cascade: ['persist'])]
-    #[Groups(['bateau:read'])]
     private Collection $documents;
 
     /** Champ non persisté : moyenne des avis, calculée et injectée par BateauController (jamais stockée en base). */

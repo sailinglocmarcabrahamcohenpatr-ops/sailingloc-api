@@ -204,6 +204,7 @@ class BateauController extends AbstractController
         ]
     )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function update(int $id, Request $request): JsonResponse
     {
         $bateau = $this->repository->find($id);
@@ -278,6 +279,7 @@ class BateauController extends AbstractController
         ]
     )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function delete(int $id): JsonResponse
     {
         $bateau = $this->repository->find($id);
@@ -348,5 +350,32 @@ class BateauController extends AbstractController
         }
 
         return $this->json($bateau->getReservations(), Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
+    }
+
+    #[OA\Get(
+        path: '/api/bateaux/{id}/documents',
+        summary: 'Documents d\'un bateau (authentifié)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Liste des documents'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Bateau non trouvé'),
+        ]
+    )]
+    #[Route('/{id}/documents', name: 'documents', methods: ['GET'])]
+    #[IsGranted('IS_AUTHENTICATED_FULLY')]
+    public function documents(int $id): JsonResponse
+    {
+        $bateau = $this->repository->find($id);
+
+        if (!$bateau) {
+            return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
+        return $this->json($bateau->getDocuments(), Response::HTTP_OK, [], ['groups' => ['document:read']]);
     }
 }

@@ -8,5 +8,6 @@ enum StatutBateauEnum: string
     case DISPONIBLE            = 'disponible';
     case LOUE                  = 'loué';
     case MAINTENANCE           = 'maintenance';
+    case REFUSE                = 'refusé';
     case SUSPENDU              = 'suspendu';
 }
