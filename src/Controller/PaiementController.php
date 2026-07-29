@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Paiement;
+use App\Enum\StatutPaiementEnum;
 use App\Repository\ModeDePaiementRepository;
 use App\Repository\PaiementRepository;
 use App\Repository\ReservationRepository;
-use App\Repository\StatutPaiementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,7 +24,6 @@ class PaiementController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly PaiementRepository $repository,
         private readonly ReservationRepository $reservationRepository,
-        private readonly StatutPaiementRepository $statutPaiementRepository,
         private readonly ModeDePaiementRepository $modePaiementRepository,
         private readonly ValidatorInterface $validator,
     ) {}
@@ -71,8 +70,8 @@ class PaiementController extends AbstractController
                 properties: [
                     new OA\Property(property: 'montant', type: 'number', example: 875),
                     new OA\Property(property: 'id_reservation', type: 'integer', example: 1),
-                    new OA\Property(property: 'id_statut_paiement', type: 'integer', example: 1),
-                    new OA\Property(property: 'id_mode_paiement', type: 'integer', example: 1),
+                    new OA\Property(property: 'statut_paiement', type: 'string', example: 'en_attente', description: 'Valeurs : en_attente, payé, échoué, remboursé'),
+                    new OA\Property(property: 'id_mode_paiement', type: 'integer', example: 1, nullable: true),
                     new OA\Property(property: 'date_paiement', type: 'string', format: 'date', nullable: true),
                 ]
             )
@@ -91,24 +90,27 @@ class PaiementController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $required = ['montant', 'id_reservation', 'id_statut_paiement', 'id_mode_paiement'];
+        $required = ['montant', 'id_reservation'];
         $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
         if ($missing) {
             return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
         }
 
         $reservation = $this->reservationRepository->find($data['id_reservation']);
-        $statutRef = $this->statutPaiementRepository->find($data['id_statut_paiement']);
-        $mode = $this->modePaiementRepository->find($data['id_mode_paiement']);
+        $mode = isset($data['id_mode_paiement']) ? $this->modePaiementRepository->find($data['id_mode_paiement']) : null;
 
-        if (!$reservation || !$statutRef || !$mode) {
-            return $this->json(['message' => 'Réservation, statut ou mode de paiement introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!$reservation) {
+            return $this->json(['message' => 'Réservation introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+
+        $statut = isset($data['statut_paiement'])
+            ? StatutPaiementEnum::tryFrom($data['statut_paiement']) ?? StatutPaiementEnum::EN_ATTENTE
+            : StatutPaiementEnum::EN_ATTENTE;
 
         $paiement = new Paiement();
         $paiement->setMontant((string) ($data['montant'] ?? '0'));
         $paiement->setReservation($reservation);
-        $paiement->setStatutPaiementRef($statutRef);
+        $paiement->setStatutPaiement($statut);
         $paiement->setModePaiement($mode);
 
         if (isset($data['date_paiement'])) {
@@ -150,9 +152,9 @@ class PaiementController extends AbstractController
         if (isset($data['date_paiement'])) $paiement->setDatePaiement(new \DateTime($data['date_paiement']));
 
         if (isset($data['id_statut_paiement'])) {
-            $statut = $this->statutPaiementRepository->find($data['id_statut_paiement']);
-            if (!$statut) return $this->json(['message' => 'Statut introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-            $paiement->setStatutPaiementRef($statut);
+            $statut = StatutPaiementEnum::tryFrom($data['id_statut_paiement']);
+            if (!$statut) return $this->json(['message' => 'Statut invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            $paiement->setStatutPaiement($statut);
         }
 
         $errors = $this->validator->validate($paiement);

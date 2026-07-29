@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\StatutReservationEnum;
 use App\Repository\ReservationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -44,9 +45,9 @@ class Reservation
     #[Groups(['avis:read'])]
     private ?Bateau $bateau = null;
 
-    #[ORM\ManyToOne(targetEntity: StatutReservation::class, inversedBy: 'reservations')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?StatutReservation $statutReservation = null;
+    #[ORM\Column(type: 'string', enumType: StatutReservationEnum::class, length: 50)]
+    #[Groups(['reservation:read'])]
+    private StatutReservationEnum $statutReservation = StatutReservationEnum::EN_ATTENTE;
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'reservations')]
     #[ORM\JoinColumn(nullable: false)]
@@ -148,12 +149,12 @@ class Reservation
         return $this;
     }
 
-    public function getStatutReservation(): ?StatutReservation
+    public function getStatutReservation(): StatutReservationEnum
     {
         return $this->statutReservation;
     }
 
-    public function setStatutReservation(?StatutReservation $statutReservation): static
+    public function setStatutReservation(StatutReservationEnum $statutReservation): static
     {
         $this->statutReservation = $statutReservation;
 

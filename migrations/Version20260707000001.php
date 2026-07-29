@@ -17,7 +17,7 @@ final class Version20260707000001 extends AbstractMigration
     public function up(Schema $schema): void
     {
         $this->addSql('ALTER TABLE utilisateur ADD token_reset_password VARCHAR(64) DEFAULT NULL');
-        $this->addSql('ALTER TABLE utilisateur ADD token_reset_password_expires_at DATETIME DEFAULT NULL');
+        $this->addSql('ALTER TABLE utilisateur ADD token_reset_password_expires_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
     }
 
     public function down(Schema $schema): void

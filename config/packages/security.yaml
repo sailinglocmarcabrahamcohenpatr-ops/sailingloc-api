@@ -42,6 +42,7 @@ security:
         - { path: ^/api/auth/forgot-password, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/api/doc,                 roles: PUBLIC_ACCESS }
+        - { path: ^/api/stripe/webhook,      roles: PUBLIC_ACCESS }
         # Routes de consultation publiques (lecture seule, sans authentification)
         - { path: ^/api/bateaux,             roles: PUBLIC_ACCESS, methods: [GET] }
         - { path: ^/api/ports,               roles: PUBLIC_ACCESS, methods: [GET] }

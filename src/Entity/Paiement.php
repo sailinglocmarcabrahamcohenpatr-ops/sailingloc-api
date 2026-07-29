@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\StatutPaiementEnum;
 use App\Repository\PaiementRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,17 +26,21 @@ class Paiement
     #[Groups(['paiement:read'])]
     private string $montant;
 
-    #[ORM\ManyToOne(targetEntity: StatutPaiement::class, inversedBy: 'paiements')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?StatutPaiement $statutPaiementRef = null;
+    #[ORM\Column(type: 'string', enumType: StatutPaiementEnum::class, length: 50)]
+    #[Groups(['paiement:read'])]
+    private StatutPaiementEnum $statutPaiement = StatutPaiementEnum::EN_ATTENTE;
 
     #[ORM\ManyToOne(targetEntity: ModeDePaiement::class, inversedBy: 'paiements')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?ModeDePaiement $modePaiement = null;
 
     #[ORM\ManyToOne(targetEntity: Reservation::class, inversedBy: 'paiements')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Reservation $reservation = null;
+
+    #[ORM\Column(name: 'stripe_payment_intent_id', length: 255, nullable: true, unique: true)]
+    #[Groups(['paiement:read'])]
+    private ?string $stripePaymentIntentId = null;
 
     public function __construct()
     {
@@ -71,14 +76,14 @@ class Paiement
         return $this;
     }
 
-    public function getStatutPaiementRef(): ?StatutPaiement
+    public function getStatutPaiement(): StatutPaiementEnum
     {
-        return $this->statutPaiementRef;
+        return $this->statutPaiement;
     }
 
-    public function setStatutPaiementRef(?StatutPaiement $statutPaiementRef): static
+    public function setStatutPaiement(StatutPaiementEnum $statutPaiement): static
     {
-        $this->statutPaiementRef = $statutPaiementRef;
+        $this->statutPaiement = $statutPaiement;
 
         return $this;
     }
@@ -103,6 +108,18 @@ class Paiement
     public function setReservation(?Reservation $reservation): static
     {
         $this->reservation = $reservation;
+
+        return $this;
+    }
+
+    public function getStripePaymentIntentId(): ?string
+    {
+        return $this->stripePaymentIntentId;
+    }
+
+    public function setStripePaymentIntentId(?string $stripePaymentIntentId): static
+    {
+        $this->stripePaymentIntentId = $stripePaymentIntentId;
 
         return $this;
     }

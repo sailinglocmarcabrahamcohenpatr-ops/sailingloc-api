@@ -5,10 +5,10 @@ namespace App\Controller;
 use App\Entity\Bateau;
 use App\Entity\Contrat;
 use App\Entity\Reservation;
+use App\Enum\StatutReservationEnum;
 use App\Repository\BateauRepository;
 use App\Repository\ContratRepository;
 use App\Repository\ReservationRepository;
-use App\Repository\StatutReservationRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -33,7 +33,6 @@ class ReservationController extends AbstractController
         private readonly BateauRepository $bateauRepository,
         private readonly UtilisateurRepository $utilisateurRepository,
         private readonly ContratRepository $contratRepository,
-        private readonly StatutReservationRepository $statutRepository,
         private readonly ValidatorInterface $validator,
     ) {}
 
@@ -120,7 +119,7 @@ class ReservationController extends AbstractController
                     new OA\Property(property: 'id_bateau', type: 'integer', example: 1),
                     new OA\Property(property: 'id_utilisateur', type: 'integer', example: 2),
                     new OA\Property(property: 'id_contrat', type: 'integer', nullable: true, description: 'Optionnel — un contrat par défaut est créé si absent'),
-                    new OA\Property(property: 'id_statut_reservation', type: 'integer', example: 1),
+                    new OA\Property(property: 'statut_reservation', type: 'string', example: 'en_attente', description: 'Valeurs : en_attente, confirmée, annulée, refusée, terminée'),
                 ]
             )
         ),
@@ -139,7 +138,7 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Données invalides.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $required = ['date_debut', 'date_fin', 'id_bateau', 'id_utilisateur', 'id_statut_reservation'];
+        $required = ['date_debut', 'date_fin', 'id_bateau', 'id_utilisateur'];
         $missing = array_filter($required, fn($f) => !isset($data[$f]) || $data[$f] === '' || $data[$f] === null);
         if ($missing) {
             return $this->json(['message' => 'Champs obligatoires manquants.', 'champs' => array_values($missing)], Response::HTTP_BAD_REQUEST);
@@ -147,11 +146,14 @@ class ReservationController extends AbstractController
 
         $bateau = $this->bateauRepository->find($data['id_bateau']);
         $utilisateur = $this->utilisateurRepository->find($data['id_utilisateur']);
-        $statut = $this->statutRepository->find($data['id_statut_reservation']);
 
-        if (!$bateau || !$utilisateur || !$statut) {
-            return $this->json(['message' => 'Bateau, utilisateur ou statut introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if (!$bateau || !$utilisateur) {
+            return $this->json(['message' => 'Bateau ou utilisateur introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+
+        $statut = isset($data['statut_reservation'])
+            ? StatutReservationEnum::tryFrom($data['statut_reservation']) ?? StatutReservationEnum::EN_ATTENTE
+            : StatutReservationEnum::EN_ATTENTE;
 
         if (!empty($data['id_contrat'])) {
             $contrat = $this->contratRepository->find($data['id_contrat']);
@@ -246,8 +248,8 @@ class ReservationController extends AbstractController
         }
 
         if (isset($data['id_statut_reservation'])) {
-            $statut = $this->statutRepository->find($data['id_statut_reservation']);
-            if (!$statut) return $this->json(['message' => 'Statut introuvable.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            $statut = StatutReservationEnum::tryFrom($data['id_statut_reservation']);
+            if (!$statut) return $this->json(['message' => 'Statut invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
             $reservation->setStatutReservation($statut);
         }
 
