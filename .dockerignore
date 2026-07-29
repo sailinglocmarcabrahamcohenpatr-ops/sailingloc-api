@@ -7,5 +7,5 @@ var/cache
 var/log
 var/sessions
 node_modules
-docker
+docker/nginx
 *.md
