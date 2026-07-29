@@ -4,10 +4,13 @@ namespace App\Controller;
 
 use App\Entity\Bateau;
 use App\Entity\Contrat;
+use App\Entity\Disponibilite;
 use App\Entity\Reservation;
+use App\Enum\StatutDisponibiliteEnum;
 use App\Enum\StatutReservationEnum;
 use App\Repository\BateauRepository;
 use App\Repository\ContratRepository;
+use App\Repository\DisponibiliteRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -33,6 +36,7 @@ class ReservationController extends AbstractController
         private readonly BateauRepository $bateauRepository,
         private readonly UtilisateurRepository $utilisateurRepository,
         private readonly ContratRepository $contratRepository,
+        private readonly DisponibiliteRepository $disponibiliteRepository,
         private readonly ValidatorInterface $validator,
     ) {}
 
@@ -198,6 +202,9 @@ class ReservationController extends AbstractController
         $this->em->persist($reservation);
         $this->em->flush();
 
+        // Bloquer automatiquement la période dans le planning des disponibilités
+        $this->bloquerDisponibilite($reservation);
+
         return $this->json($reservation, Response::HTTP_CREATED, [], ['groups' => ['reservation:read']]);
     }
 
@@ -260,6 +267,9 @@ class ReservationController extends AbstractController
 
         $this->em->flush();
 
+        // Synchroniser le blocage de disponibilité selon le nouveau statut / les nouvelles dates
+        $this->syncDisponibilite($reservation);
+
         return $this->json($reservation, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
     }
 
@@ -291,6 +301,9 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
+        // Libérer le créneau dans le planning avant la suppression
+        $this->libererDisponibilite($reservation);
+
         $this->em->remove($reservation);
         $this->em->flush();
 
@@ -319,5 +332,59 @@ class ReservationController extends AbstractController
         }
 
         return $this->json($reservation->getAvis(), Response::HTTP_OK, [], ['groups' => ['avis:read']]);
+    }
+
+    // ─── Gestion automatique des disponibilités ───────────────────────────────
+
+    /** Crée un blocage INDISPONIBLE lié à la réservation. */
+    private function bloquerDisponibilite(Reservation $reservation): void
+    {
+        $dispo = new Disponibilite();
+        $dispo->setBateau($reservation->getBateau());
+        $dispo->setDateDebut($reservation->getDateDebut());
+        $dispo->setDateFin($reservation->getDateFin());
+        $dispo->setStatut(StatutDisponibiliteEnum::INDISPONIBLE);
+        $dispo->setReservation($reservation);
+
+        $this->em->persist($dispo);
+        $this->em->flush();
+    }
+
+    /**
+     * Met à jour le blocage si les dates changent ou le supprime si la réservation
+     * est annulée / refusée.
+     */
+    private function syncDisponibilite(Reservation $reservation): void
+    {
+        $dispo = $this->disponibiliteRepository->findOneBy(['reservation' => $reservation]);
+
+        $statutFinal = in_array($reservation->getStatutReservation(), [
+            StatutReservationEnum::ANNULEE,
+            StatutReservationEnum::REFUSEE,
+        ], true);
+
+        if ($statutFinal) {
+            if ($dispo) {
+                $this->em->remove($dispo);
+                $this->em->flush();
+            }
+            return;
+        }
+
+        if ($dispo) {
+            $dispo->setDateDebut($reservation->getDateDebut());
+            $dispo->setDateFin($reservation->getDateFin());
+            $this->em->flush();
+        }
+    }
+
+    /** Supprime le blocage associé (appelé avant remove de la réservation). */
+    private function libererDisponibilite(Reservation $reservation): void
+    {
+        $dispo = $this->disponibiliteRepository->findOneBy(['reservation' => $reservation]);
+        if ($dispo) {
+            $this->em->remove($dispo);
+            $this->em->flush();
+        }
     }
 }

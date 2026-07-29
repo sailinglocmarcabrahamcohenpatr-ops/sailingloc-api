@@ -34,6 +34,10 @@ class Disponibilite
     #[ORM\JoinColumn(nullable: false)]
     private ?Bateau $bateau = null;
 
+    #[ORM\OneToOne(targetEntity: Reservation::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Reservation $reservation = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -83,6 +87,18 @@ class Disponibilite
     public function setBateau(?Bateau $bateau): static
     {
         $this->bateau = $bateau;
+
+        return $this;
+    }
+
+    public function getReservation(): ?Reservation
+    {
+        return $this->reservation;
+    }
+
+    public function setReservation(?Reservation $reservation): static
+    {
+        $this->reservation = $reservation;
 
         return $this;
     }
