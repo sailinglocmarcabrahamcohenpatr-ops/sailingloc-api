@@ -15,7 +15,6 @@ services:
       JWT_SECRET_KEY: /var/www/html/config/jwt/private.pem
       JWT_PUBLIC_KEY: /var/www/html/config/jwt/public.pem
       MERCURE_URL: http://mercure/.well-known/mercure
-      MERCURE_PUBLIC_URL: http://localhost:8082/.well-known/mercure
       MERCURE_JWT_SECRET: "!ChangeMercureHubJWTSecretKey!"
 
   nginx:
