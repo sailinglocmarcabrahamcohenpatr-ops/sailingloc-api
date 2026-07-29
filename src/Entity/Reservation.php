@@ -42,7 +42,7 @@ class Reservation
 
     #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'reservations')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['avis:read'])]
+    #[Groups(['reservation:read', 'avis:read'])]
     private ?Bateau $bateau = null;
 
     #[ORM\Column(type: 'string', enumType: StatutReservationEnum::class, length: 50)]
@@ -51,6 +51,7 @@ class Reservation
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class, inversedBy: 'reservations')]
     #[ORM\JoinColumn(nullable: false)]
+    #[Groups(['reservation:read'])]
     private ?Utilisateur $utilisateur = null;
 
     #[ORM\ManyToMany(targetEntity: Assurance::class, inversedBy: 'reservations')]
