@@ -242,7 +242,7 @@ class UtilisateurController extends AbstractController
 
     #[OA\Get(
         path: '/api/utilisateurs/search/email',
-        summary: 'Rechercher un utilisateur par email (ADMIN)',
+        summary: 'Rechercher un utilisateur par email (USER, PROPRIETAIRE, ADMIN)',
         parameters: [
             new OA\Parameter(name: 'email', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'email')),
         ],
@@ -254,7 +254,7 @@ class UtilisateurController extends AbstractController
         ]
     )]
     #[Route('/search/email', name: 'search_by_email', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_USER')]
     public function searchByEmail(Request $request): JsonResponse
     {
         $email = $request->query->get('email');
