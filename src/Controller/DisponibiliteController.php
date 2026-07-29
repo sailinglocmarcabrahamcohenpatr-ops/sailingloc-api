@@ -58,6 +58,29 @@ class DisponibiliteController extends AbstractController
     }
 
     #[OA\Get(
+        path: '/api/disponibilites/bateau/{id}',
+        summary: 'Lister les disponibilités d\'un bateau',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'Liste des disponibilités du bateau'),
+            new OA\Response(response: 404, description: 'Bateau non trouvé'),
+        ]
+    )]
+    #[Route('/bateau/{id}', name: 'by_bateau', methods: ['GET'])]
+    public function byBateau(int $id): JsonResponse
+    {
+        $bateau = $this->bateauRepository->find($id);
+
+        if (!$bateau) {
+            return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $dispos = $this->repository->findBy(['bateau' => $bateau], ['dateDebut' => 'ASC']);
+
+        return $this->json($dispos, Response::HTTP_OK, [], ['groups' => ['disponibilite:read']]);
+    }
+
+    #[OA\Get(
         path: '/api/disponibilites/{id}',
         summary: 'Détail d\'une disponibilité',
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
