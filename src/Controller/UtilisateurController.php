@@ -6,6 +6,7 @@ use App\Entity\Utilisateur;
 use App\Enum\RoleEnum;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Enum\StatutCompteEnum;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -114,7 +115,7 @@ class UtilisateurController extends AbstractController
         $utilisateur->setEmail($data['email'] ?? '');
         $utilisateur->setPassword($this->hasher->hashPassword($utilisateur, $data['password'] ?? ''));
         $utilisateur->setTelephone($data['telephone'] ?? null);
-        $utilisateur->setStatutCompte($data['statut_compte'] ?? 'actif');
+        $utilisateur->setStatutCompte(StatutCompteEnum::from($data['statut_compte'] ?? 'actif'));
 
         $errors = $this->validator->validate($utilisateur);
         if (count($errors) > 0) {
@@ -171,7 +172,7 @@ class UtilisateurController extends AbstractController
         if (isset($data['email'])) $utilisateur->setEmail($data['email']);
         if (isset($data['password'])) $utilisateur->setPassword($this->hasher->hashPassword($utilisateur, $data['password']));
         if (isset($data['telephone'])) $utilisateur->setTelephone($data['telephone']);
-        if (isset($data['statut_compte'])) $utilisateur->setStatutCompte($data['statut_compte']);
+        if (isset($data['statut_compte'])) $utilisateur->setStatutCompte(StatutCompteEnum::from($data['statut_compte']));
 
         $errors = $this->validator->validate($utilisateur);
         if (count($errors) > 0) {
