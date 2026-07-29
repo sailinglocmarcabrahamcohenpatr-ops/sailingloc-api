@@ -92,7 +92,7 @@ class Bateau
     private Collection $disponibilites;
 
     #[ORM\OneToMany(targetEntity: PhotoBateau::class, mappedBy: 'bateau')]
-    #[Groups(['bateau:read'])]
+    #[Groups(['bateau:read', 'reservation:read'])]
     private Collection $photos;
 
     #[ORM\ManyToMany(targetEntity: Utilisateur::class, mappedBy: 'bateauxFavoris')]
