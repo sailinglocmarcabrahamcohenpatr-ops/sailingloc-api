@@ -7,6 +7,7 @@ use App\Repository\MessageRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,6 +31,7 @@ class MessageController extends AbstractController
         private readonly ValidatorInterface $validator,
         private readonly HubInterface $hub,
         private readonly SerializerInterface $serializer,
+        private readonly LoggerInterface $logger,
     ) {}
 
     #[OA\Get(
@@ -135,13 +137,21 @@ class MessageController extends AbstractController
         $this->em->persist($message);
         $this->em->flush();
 
-        // Notifier le destinataire en temps réel via Mercure
-        $payload = $this->serializer->serialize($message, 'json', ['groups' => ['message:read']]);
-        $this->hub->publish(new Update(
-            topics: ["/messages/user/{$destinataire->getId()}"],
-            data: $payload,
-            private: true,
-        ));
+        // Notifier le destinataire en temps réel via Mercure — best-effort : si le hub est
+        // indisponible, le message reste envoyé (déjà persisté), seule la notif live est perdue.
+        try {
+            $payload = $this->serializer->serialize($message, 'json', ['groups' => ['message:read']]);
+            $this->hub->publish(new Update(
+                topics: ["/messages/user/{$destinataire->getId()}"],
+                data: $payload,
+                private: true,
+            ));
+        } catch (\Throwable $e) {
+            $this->logger->error('Échec de la publication Mercure pour le message {id}: {error}', [
+                'id' => $message->getId(),
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $this->json($message, Response::HTTP_CREATED, [], ['groups' => ['message:read']]);
     }
