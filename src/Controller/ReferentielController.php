@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Enum\RoleEnum;
+use App\Enum\StatutPaiementEnum;
+use App\Enum\StatutReservationEnum;
 use App\Repository\AssuranceRepository;
 use App\Repository\ModeDePaiementRepository;
-use App\Repository\StatutPaiementRepository;
-use App\Repository\StatutReservationRepository;
 use App\Repository\TypeBateauRepository;
 use App\Repository\TypeDocumentRepository;
 use OpenApi\Attributes as OA;
@@ -22,9 +22,7 @@ class ReferentielController extends AbstractController
     public function __construct(
         private readonly TypeBateauRepository $typeBateauRepository,
         private readonly TypeDocumentRepository $typeDocumentRepository,
-        private readonly StatutReservationRepository $statutReservationRepository,
         private readonly ModeDePaiementRepository $modePaiementRepository,
-        private readonly StatutPaiementRepository $statutPaiementRepository,
         private readonly AssuranceRepository $assuranceRepository,
     ) {}
 
@@ -55,7 +53,9 @@ class ReferentielController extends AbstractController
     #[Route('/statuts-reservations', name: 'statuts_reservations', methods: ['GET'])]
     public function statutsReservations(): JsonResponse
     {
-        return $this->json($this->statutReservationRepository->findAll(), Response::HTTP_OK, [], ['groups' => ['referentiel:read']]);
+        $values = array_map(fn(StatutReservationEnum $s) => ['value' => $s->value], StatutReservationEnum::cases());
+
+        return $this->json($values, Response::HTTP_OK);
     }
 
     #[OA\Get(path: '/api/referentiels/modes-paiements', summary: 'Modes de paiement', responses: [new OA\Response(response: 200, description: 'OK')])]
@@ -69,7 +69,9 @@ class ReferentielController extends AbstractController
     #[Route('/statuts-paiements', name: 'statuts_paiements', methods: ['GET'])]
     public function statutsPaiements(): JsonResponse
     {
-        return $this->json($this->statutPaiementRepository->findAll(), Response::HTTP_OK, [], ['groups' => ['referentiel:read']]);
+        $values = array_map(fn(StatutPaiementEnum $s) => ['value' => $s->value], StatutPaiementEnum::cases());
+
+        return $this->json($values, Response::HTTP_OK);
     }
 
     #[OA\Get(path: '/api/referentiels/assurances', summary: 'Types d\'assurances', responses: [new OA\Response(response: 200, description: 'OK')])]
