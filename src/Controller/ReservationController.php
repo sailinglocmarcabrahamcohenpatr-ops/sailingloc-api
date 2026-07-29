@@ -175,8 +175,8 @@ class ReservationController extends AbstractController
 
         $dateDebut = new \DateTime($data['date_debut']);
         $dateFin = new \DateTime($data['date_fin']);
-        if ($dateFin <= $dateDebut) {
-            return $this->json(['message' => 'La date de fin doit être postérieure à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if ($dateFin < $dateDebut) {
+            return $this->json(['message' => 'La date de fin doit être postérieure ou égale à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         if (count($this->repository->findOverlapping($bateau->getId(), $dateDebut, $dateFin)) > 0) {
@@ -240,8 +240,8 @@ class ReservationController extends AbstractController
             $dateDebut = isset($data['date_debut']) ? new \DateTime($data['date_debut']) : $reservation->getDateDebut();
             $dateFin = isset($data['date_fin']) ? new \DateTime($data['date_fin']) : $reservation->getDateFin();
 
-            if ($dateFin <= $dateDebut) {
-                return $this->json(['message' => 'La date de fin doit être postérieure à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+            if ($dateFin < $dateDebut) {
+                return $this->json(['message' => 'La date de fin doit être postérieure ou égale à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
             }
 
             if (count($this->repository->findOverlapping($reservation->getBateau()->getId(), $dateDebut, $dateFin, $reservation->getId())) > 0) {
