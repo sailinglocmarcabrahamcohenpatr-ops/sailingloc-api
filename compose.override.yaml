@@ -7,6 +7,8 @@ services:
     volumes:
       - .:/var/www/html
       - /var/www/html/vendor
+    env_file:
+      - .env.local
     environment:
       APP_ENV: dev
       APP_DEBUG: 1
