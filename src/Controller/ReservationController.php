@@ -278,7 +278,7 @@ class ReservationController extends AbstractController
         summary: 'Annuler une réservation (son locataire, le propriétaire du bateau, ou ADMIN)',
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
         responses: [
-            new OA\Response(response: 204, description: 'Supprimée'),
+            new OA\Response(response: 200, description: 'Annulée'),
             new OA\Response(response: 403, description: 'Accès refusé'),
             new OA\Response(response: 404, description: 'Non trouvée'),
         ]
@@ -301,13 +301,13 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
-        // Libérer le créneau dans le planning avant la suppression
-        $this->libererDisponibilite($reservation);
-
-        $this->em->remove($reservation);
+        // Annulation douce : la réservation est conservée (historique, facturation, avis...)
+        // plutôt que supprimée ; syncDisponibilite libère le créneau puisque ANNULEE est un statut final.
+        $reservation->setStatutReservation(StatutReservationEnum::ANNULEE);
         $this->em->flush();
+        $this->syncDisponibilite($reservation);
 
-        return $this->json(null, Response::HTTP_NO_CONTENT);
+        return $this->json($reservation, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
     }
 
     #[Route('/{id}/paiements', name: 'paiements', methods: ['GET'])]
@@ -374,16 +374,6 @@ class ReservationController extends AbstractController
         if ($dispo) {
             $dispo->setDateDebut($reservation->getDateDebut());
             $dispo->setDateFin($reservation->getDateFin());
-            $this->em->flush();
-        }
-    }
-
-    /** Supprime le blocage associé (appelé avant remove de la réservation). */
-    private function libererDisponibilite(Reservation $reservation): void
-    {
-        $dispo = $this->disponibiliteRepository->findOneBy(['reservation' => $reservation]);
-        if ($dispo) {
-            $this->em->remove($dispo);
             $this->em->flush();
         }
     }

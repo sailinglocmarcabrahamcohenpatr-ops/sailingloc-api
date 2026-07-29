@@ -132,7 +132,9 @@ class ReservationControllerTest extends ApiTestCase
     {
         $resa = $this->createReservationFixture();
         $this->client->request('DELETE', "/api/reservations/{$resa->getId()}", [], [], $this->authHeader($this->adminToken));
-        $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->assertResponseStatusCodeSame(Response::HTTP_OK);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('annulée', $data['statutReservation']);
     }
 
     // ------------------------------------------------------------------ id_contrat optionnel (bug bloquant corrigé)
@@ -349,6 +351,8 @@ class ReservationControllerTest extends ApiTestCase
         $em->flush();
 
         $this->client->request('DELETE', "/api/reservations/{$resa->getId()}", [], [], $this->authHeader($proprietaireToken));
-        $this->assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->assertResponseStatusCodeSame(Response::HTTP_OK);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('annulée', $data['statutReservation']);
     }
 }
