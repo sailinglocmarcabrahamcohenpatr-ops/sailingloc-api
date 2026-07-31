@@ -24,6 +24,10 @@ class Bateau
     #[Groups(['bateau:read', 'avis:read', 'reservation:read'])]
     private string $nomBateau;
 
+    #[ORM\Column(name: 'date_creation', type: Types::DATETIME_MUTABLE)]
+    #[Groups(['bateau:read'])]
+    private \DateTimeInterface $dateCreation;
+
     #[ORM\Column(length: 255)]
     #[Groups(['bateau:read'])]
     private string $motorisation;
@@ -114,6 +118,7 @@ class Bateau
 
     public function __construct()
     {
+        $this->dateCreation = new \DateTime();
         $this->disponibilites = new ArrayCollection();
         $this->photos = new ArrayCollection();
         $this->utilisateursFavoris = new ArrayCollection();
@@ -134,6 +139,18 @@ class Bateau
     public function setNomBateau(string $nomBateau): static
     {
         $this->nomBateau = $nomBateau;
+
+        return $this;
+    }
+
+    public function getDateCreation(): \DateTimeInterface
+    {
+        return $this->dateCreation;
+    }
+
+    public function setDateCreation(\DateTimeInterface $dateCreation): static
+    {
+        $this->dateCreation = $dateCreation;
 
         return $this;
     }
