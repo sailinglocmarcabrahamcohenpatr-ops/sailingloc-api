@@ -6,6 +6,7 @@ use App\Entity\Bateau;
 use App\Entity\Contrat;
 use App\Entity\Disponibilite;
 use App\Entity\Reservation;
+use App\Enum\NotificationTypeEnum;
 use App\Enum\StatutDisponibiliteEnum;
 use App\Enum\StatutReservationEnum;
 use App\Repository\BateauRepository;
@@ -13,11 +14,14 @@ use App\Repository\ContratRepository;
 use App\Repository\DisponibiliteRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\UtilisateurRepository;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\Email;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -38,6 +42,7 @@ class ReservationController extends AbstractController
         private readonly ContratRepository $contratRepository,
         private readonly DisponibiliteRepository $disponibiliteRepository,
         private readonly ValidatorInterface $validator,
+        private readonly NotificationService $notificationService,
     ) {}
 
     /** Calcule le montant total (sous-total + frais de service) à partir du prix/jour réel du bateau. */
@@ -205,6 +210,14 @@ class ReservationController extends AbstractController
         // Bloquer automatiquement la période dans le planning des disponibilités
         $this->bloquerDisponibilite($reservation);
 
+        $this->notificationService->notifier(
+            $bateau->getProprietaire(),
+            NotificationTypeEnum::NOUVELLE_RESERVATION,
+            'Nouvelle réservation',
+            "{$utilisateur->getPrenom()} {$utilisateur->getNom()} a réservé {$bateau->getNomBateau()} du {$dateDebut->format('d/m/Y')} au {$dateFin->format('d/m/Y')}.",
+            $reservation,
+        );
+
         return $this->json($reservation, Response::HTTP_CREATED, [], ['groups' => ['reservation:read']]);
     }
 
@@ -220,8 +233,12 @@ class ReservationController extends AbstractController
         ]
     )]
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
-    public function update(int $id, Request $request): JsonResponse
-    {
+    public function update(
+        int $id,
+        Request $request,
+        #[Autowire(env: 'FRONTEND_URL')]
+        string $frontendUrl,
+    ): JsonResponse {
         $reservation = $this->repository->find($id);
 
         if (!$reservation) {
@@ -235,6 +252,7 @@ class ReservationController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
+        $statutAvant = $reservation->getStatutReservation();
 
         if (isset($data['date_debut']) || isset($data['date_fin'])) {
             $dateDebut = isset($data['date_debut']) ? new \DateTime($data['date_debut']) : $reservation->getDateDebut();
@@ -269,6 +287,31 @@ class ReservationController extends AbstractController
 
         // Synchroniser le blocage de disponibilité selon le nouveau statut / les nouvelles dates
         $this->syncDisponibilite($reservation);
+
+        if ($statutAvant !== StatutReservationEnum::CONFIRMEE && $reservation->getStatutReservation() === StatutReservationEnum::CONFIRMEE) {
+            $client = $reservation->getUtilisateur();
+            $bateau = $reservation->getBateau();
+
+            $email = (new Email())
+                ->to($client->getEmail())
+                ->subject('Votre réservation SailingLoc est confirmée')
+                ->html($this->renderView('emails/reservation_confirmee.html.twig', [
+                    'prenom'         => $client->getPrenom(),
+                    'nomBateau'      => $bateau->getNomBateau(),
+                    'dateDebut'      => $reservation->getDateDebut()->format('d/m/Y'),
+                    'dateFin'        => $reservation->getDateFin()->format('d/m/Y'),
+                    'reservationUrl' => $frontendUrl . '/reservations/' . $reservation->getId(),
+                ]));
+
+            $this->notificationService->notifier(
+                $client,
+                NotificationTypeEnum::RESERVATION_CONFIRMEE,
+                'Réservation confirmée',
+                "Votre réservation de {$bateau->getNomBateau()} du {$reservation->getDateDebut()->format('d/m/Y')} au {$reservation->getDateFin()->format('d/m/Y')} a été confirmée.",
+                $reservation,
+                $email,
+            );
+        }
 
         return $this->json($reservation, Response::HTTP_OK, [], ['groups' => ['reservation:read']]);
     }

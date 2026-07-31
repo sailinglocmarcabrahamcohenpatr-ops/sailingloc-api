@@ -32,6 +32,7 @@ class MercureController extends AbstractController
         // Le cookie autorise l'utilisateur à s'abonner UNIQUEMENT à ses propres topics
         $authorization->setCookie($request, [
             "/messages/user/{$user->getId()}",
+            "/notifications/user/{$user->getId()}",
         ]);
 
         return new Response();

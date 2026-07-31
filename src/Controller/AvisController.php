@@ -4,8 +4,10 @@ namespace App\Controller;
 
 use App\Entity\Avis;
 use App\Entity\Utilisateur;
+use App\Enum\NotificationTypeEnum;
 use App\Repository\AvisRepository;
 use App\Repository\ReservationRepository;
+use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,6 +27,7 @@ class AvisController extends AbstractController
         private readonly AvisRepository $repository,
         private readonly ReservationRepository $reservationRepository,
         private readonly ValidatorInterface $validator,
+        private readonly NotificationService $notificationService,
     ) {}
 
     #[OA\Get(
@@ -163,6 +166,15 @@ class AvisController extends AbstractController
 
         $this->em->persist($avis);
         $this->em->flush();
+
+        $bateau = $reservation->getBateau();
+        $this->notificationService->notifier(
+            $bateau->getProprietaire(),
+            NotificationTypeEnum::NOUVEL_AVIS,
+            'Nouvel avis',
+            "{$user->getPrenom()} {$user->getNom()} a laissé un avis sur {$bateau->getNomBateau()}.",
+            $reservation,
+        );
 
         return $this->json($avis, Response::HTTP_CREATED, [], ['groups' => ['avis:read']]);
     }
