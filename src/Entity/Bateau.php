@@ -17,11 +17,11 @@ class Bateau
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::BIGINT)]
-    #[Groups(['bateau:read', 'avis:read', 'reservation:read'])]
+    #[Groups(['bateau:read', 'avis:read', 'reservation:read', 'notification:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['bateau:read', 'avis:read', 'reservation:read'])]
+    #[Groups(['bateau:read', 'avis:read', 'reservation:read', 'notification:read'])]
     private string $nomBateau;
 
     #[ORM\Column(name: 'date_creation', type: Types::DATETIME_MUTABLE)]

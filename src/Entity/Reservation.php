@@ -17,7 +17,7 @@ class Reservation
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: Types::BIGINT)]
-    #[Groups(['reservation:read', 'avis:read'])]
+    #[Groups(['reservation:read', 'avis:read', 'notification:read'])]
     private ?int $id = null;
 
     #[ORM\Column(name: 'date_reservation', type: Types::DATETIME_MUTABLE)]
@@ -25,11 +25,11 @@ class Reservation
     private \DateTimeInterface $dateReservation;
 
     #[ORM\Column(name: 'date_debut', type: Types::DATETIME_MUTABLE)]
-    #[Groups(['reservation:read', 'avis:read'])]
+    #[Groups(['reservation:read', 'avis:read', 'notification:read'])]
     private \DateTimeInterface $dateDebut;
 
     #[ORM\Column(name: 'date_fin', type: Types::DATETIME_MUTABLE)]
-    #[Groups(['reservation:read', 'avis:read'])]
+    #[Groups(['reservation:read', 'avis:read', 'notification:read'])]
     private \DateTimeInterface $dateFin;
 
     #[ORM\Column(name: 'montant_total', type: Types::DECIMAL, precision: 20, scale: 2)]
@@ -42,7 +42,7 @@ class Reservation
 
     #[ORM\ManyToOne(targetEntity: Bateau::class, inversedBy: 'reservations')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['reservation:read', 'avis:read'])]
+    #[Groups(['reservation:read', 'avis:read', 'notification:read'])]
     private ?Bateau $bateau = null;
 
     #[ORM\Column(type: 'string', enumType: StatutReservationEnum::class, length: 50)]
