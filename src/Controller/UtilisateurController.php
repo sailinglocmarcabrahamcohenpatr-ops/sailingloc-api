@@ -172,7 +172,12 @@ class UtilisateurController extends AbstractController
         if (isset($data['email'])) $utilisateur->setEmail($data['email']);
         if (isset($data['password'])) $utilisateur->setPassword($this->hasher->hashPassword($utilisateur, $data['password']));
         if (isset($data['telephone'])) $utilisateur->setTelephone($data['telephone']);
-        if (isset($data['statut_compte'])) $utilisateur->setStatutCompte(StatutCompteEnum::from($data['statut_compte']));
+        if (isset($data['statut_compte'])) {
+            if (!$this->isGranted('ROLE_ADMIN')) {
+                return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+            }
+            $utilisateur->setStatutCompte(StatutCompteEnum::from($data['statut_compte']));
+        }
 
         $errors = $this->validator->validate($utilisateur);
         if (count($errors) > 0) {

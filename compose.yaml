@@ -16,7 +16,6 @@ services:
       JWT_SECRET_KEY: /var/www/html/config/jwt/private.pem
       JWT_PUBLIC_KEY: /var/www/html/config/jwt/public.pem
       MERCURE_URL: http://mercure/.well-known/mercure
-      MERCURE_JWT_SECRET: ${MERCURE_JWT_SECRET:-!ChangeMercureHubJWTSecretKey!}
     depends_on:
       database:
         condition: service_healthy
@@ -52,11 +51,13 @@ services:
   mercure:
     image: dunglas/mercure
     restart: unless-stopped
+    env_file:
+      - .env.local
     environment:
-      # Uncomment the following line to disable HTTPS,
-      #SERVER_NAME: ':80'
-      MERCURE_PUBLISHER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
-      MERCURE_SUBSCRIBER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
+      # HTTPS is terminated upstream (host Caddy + nginx), so serve plain HTTP here
+      SERVER_NAME: ':80'
+      # MERCURE_PUBLISHER_JWT_KEY / MERCURE_SUBSCRIBER_JWT_KEY come from .env.local
+      # and must match the app's MERCURE_JWT_SECRET (same signing secret on both sides)
       # Set the URL of your Symfony project (without trailing slash!) as value of the cors_origins directive
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins http://127.0.0.1:8000

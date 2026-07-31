@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mercure\Authorization;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,18 +24,16 @@ class MercureController extends AbstractController
         ]
     )]
     #[Route('/token', name: 'token', methods: ['GET'])]
-    public function token(Authorization $authorization): Response
+    public function token(Request $request, Authorization $authorization): Response
     {
         /** @var \App\Entity\Utilisateur $user */
         $user = $this->getUser();
 
-        $response = new Response();
-
         // Le cookie autorise l'utilisateur à s'abonner UNIQUEMENT à ses propres topics
-        $authorization->setCookie($response, [
+        $authorization->setCookie($request, [
             "/messages/user/{$user->getId()}",
         ]);
 
-        return $response;
+        return new Response();
     }
 }

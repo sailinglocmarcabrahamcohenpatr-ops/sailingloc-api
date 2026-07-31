@@ -25,3 +25,12 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+    # symfony/mercure-bundle hardcodes SameSite=Strict on the "mercureAuthorization" cookie
+    # with no config option to change it. The front and the Mercure hub are on different
+    # origins, so a Strict cookie never reaches the hub on the EventSource request — the
+    # subscriber ends up unauthenticated and never receives private updates.
+    Symfony\Component\Mercure\Authorization:
+        arguments:
+            $registry: '@Symfony\Component\Mercure\HubRegistry'
+            $cookieLifetime: null
+            $cookieSameSite: 'none'
