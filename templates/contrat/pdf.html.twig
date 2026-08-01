@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Contrat de location — Réservation #{{ reservation.id }}</title>
+    <style>
+        @page { margin: 32px 36px; }
+        body {
+            font-family: DejaVu Sans, Arial, sans-serif;
+            color: #111827;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .brand {
+            font-size: 15px;
+            font-weight: bold;
+            color: #0a4d8c;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        h1 {
+            font-size: 20px;
+            color: #111827;
+            margin: 0 0 4px;
+        }
+        .sub {
+            color: #6b7280;
+            font-size: 11px;
+            margin-bottom: 24px;
+        }
+        .statut {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #ffffff;
+            background: #0a4d8c;
+        }
+        table.section {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+        table.section td {
+            vertical-align: top;
+            width: 50%;
+            padding: 0;
+        }
+        .box {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+        .box + .box { margin-left: 12px; }
+        .box-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9ca3af;
+            margin-bottom: 6px;
+        }
+        .box p { margin: 0 0 3px; }
+        .box strong { color: #111827; }
+        table.details {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+        table.details th, table.details td {
+            border: 1px solid #e5e7eb;
+            padding: 8px 10px;
+            text-align: left;
+            font-size: 11px;
+        }
+        table.details th {
+            background: #f8fafc;
+            color: #6b7280;
+            font-weight: bold;
+            width: 45%;
+        }
+        .montant {
+            font-size: 15px;
+            font-weight: bold;
+            color: #0a4d8c;
+        }
+        .conditions {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 14px 16px;
+            font-size: 11px;
+            color: #374151;
+            margin-bottom: 18px;
+        }
+        .footer {
+            margin-top: 28px;
+            padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 9px;
+            color: #9ca3af;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="brand">⚓ SailingLoc</div>
+    <h1>Contrat de location de bateau</h1>
+    <div class="sub">
+        Réservation #{{ reservation.id }} — généré le {{ "now"|date("d/m/Y") }}
+        &nbsp;·&nbsp;
+        <span class="statut">{{ statutContratLabel }}</span>
+    </div>
+
+    <table class="section">
+        <tr>
+            <td>
+                <div class="box">
+                    <div class="box-title">Bateau loué</div>
+                    <p><strong>{{ bateau.nomBateau }}</strong></p>
+                    <p>{{ bateau.typeBateau ? bateau.typeBateau.labelTypeBateau : 'Type non renseigné' }} — {{ bateau.taille }}</p>
+                    <p>Port d'attache : {{ bateau.port ? bateau.port.nom ~ ' (' ~ bateau.port.ville ~ ')' : 'Non renseigné' }}</p>
+                </div>
+            </td>
+            <td>
+                <div class="box">
+                    <div class="box-title">Propriétaire</div>
+                    <p><strong>{{ proprietaire.prenom }} {{ proprietaire.nom }}</strong></p>
+                    <p>{{ proprietaire.email }}</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="section">
+        <tr>
+            <td>
+                <div class="box">
+                    <div class="box-title">Locataire</div>
+                    <p><strong>{{ locataire.prenom }} {{ locataire.nom }}</strong></p>
+                    <p>{{ locataire.email }}</p>
+                </div>
+            </td>
+            <td>
+                <div class="box">
+                    <div class="box-title">Assurance</div>
+                    <p><strong>{{ contrat.assuranceIncluse ? 'Incluse' : 'Non incluse' }}</strong></p>
+                    <p>{{ contrat.assuranceIncluse ? 'Couverture SailingLoc standard' : 'Assurance personnelle du locataire requise' }}</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="details">
+        <tr>
+            <th>Période de location</th>
+            <td>Du {{ reservation.dateDebut|date("d/m/Y") }} au {{ reservation.dateFin|date("d/m/Y") }} ({{ nombreJours }} jour{{ nombreJours > 1 ? 's' : '' }})</td>
+        </tr>
+        <tr>
+            <th>Date de réservation</th>
+            <td>{{ reservation.dateReservation|date("d/m/Y") }}</td>
+        </tr>
+        <tr>
+            <th>Montant total</th>
+            <td class="montant">{{ reservation.montantTotal|number_format(2, ',', ' ') }} €</td>
+        </tr>
+    </table>
+
+    <div class="box-title" style="margin-bottom:8px;">Conditions générales</div>
+    <div class="conditions">{{ contrat.conditions }}</div>
+
+    <div class="footer">
+        Document généré automatiquement par la plateforme SailingLoc — contrat #{{ contrat.id }} associé à la réservation #{{ reservation.id }}.<br>
+        Ce document ne constitue une preuve d'engagement contractuel qu'une fois signé par les deux parties.
+    </div>
+</body>
+</html>

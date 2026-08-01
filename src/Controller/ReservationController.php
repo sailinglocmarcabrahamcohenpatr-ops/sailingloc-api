@@ -7,7 +7,9 @@ use App\Entity\Contrat;
 use App\Entity\Disponibilite;
 use App\Entity\Reservation;
 use App\Enum\NotificationTypeEnum;
+use App\Enum\StatutContratEnum;
 use App\Enum\StatutDisponibiliteEnum;
+use App\Enum\StatutPaiementEnum;
 use App\Enum\StatutReservationEnum;
 use App\Repository\BateauRepository;
 use App\Repository\ContratRepository;
@@ -16,6 +18,8 @@ use App\Repository\ReservationRepository;
 use App\Repository\UtilisateurRepository;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,6 +30,7 @@ use OpenApi\Attributes as OA;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Twig\Environment;
 
 #[OA\Tag(name: 'Réservations')]
 #[Route('/api/reservations', name: 'api_reservations_')]
@@ -43,6 +48,7 @@ class ReservationController extends AbstractController
         private readonly DisponibiliteRepository $disponibiliteRepository,
         private readonly ValidatorInterface $validator,
         private readonly NotificationService $notificationService,
+        private readonly Environment $twig,
     ) {}
 
     /** Calcule le montant total (sous-total + frais de service) à partir du prix/jour réel du bateau. */
@@ -276,6 +282,16 @@ class ReservationController extends AbstractController
             $statut = StatutReservationEnum::tryFrom($data['id_statut_reservation']);
             if (!$statut) return $this->json(['message' => 'Statut invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
             $reservation->setStatutReservation($statut);
+
+            // La confirmation par le propriétaire vaut encaissement pour le locataire : on marque le
+            // paiement comme payé ici plutôt que de dépendre du webhook Stripe (souvent indisponible en local).
+            if ($statut === StatutReservationEnum::CONFIRMEE) {
+                foreach ($reservation->getPaiements() as $paiement) {
+                    if ($paiement->getStatutPaiement() === StatutPaiementEnum::EN_ATTENTE) {
+                        $paiement->setStatutPaiement(StatutPaiementEnum::PAYE);
+                    }
+                }
+            }
         }
 
         $errors = $this->validator->validate($reservation);
@@ -419,5 +435,72 @@ class ReservationController extends AbstractController
             $dispo->setDateFin($reservation->getDateFin());
             $this->em->flush();
         }
+    }
+
+    #[OA\Get(
+        path: '/api/reservations/{id}/contrat',
+        summary: 'Télécharger le contrat de location en PDF (locataire, propriétaire du bateau ou ADMIN)',
+        parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
+        responses: [
+            new OA\Response(response: 200, description: 'PDF du contrat', content: new OA\MediaType(mediaType: 'application/pdf')),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Réservation ou contrat introuvable'),
+        ]
+    )]
+    #[Route('/{id}/contrat', name: 'contrat_pdf', methods: ['GET'])]
+    public function contratPdf(int $id): Response
+    {
+        $reservation = $this->repository->find($id);
+
+        if (!$reservation) {
+            return $this->json(['message' => 'Réservation non trouvée.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $user = $this->getUser();
+        $estLocataire = $reservation->getUtilisateur() === $user;
+        $estProprietaireBateau = $reservation->getBateau()->getProprietaire() === $user;
+        if (!$this->isGranted('ROLE_ADMIN') && !$estLocataire && !$estProprietaireBateau) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $contrat = $reservation->getContrat();
+        if (!$contrat) {
+            return $this->json(['message' => 'Aucun contrat associé à cette réservation.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $bateau = $reservation->getBateau();
+        $nombreJours = max(1, (int) $reservation->getDateDebut()->diff($reservation->getDateFin())->days);
+
+        $statutLabels = [
+            StatutContratEnum::EN_ATTENTE->value => 'En attente de signature',
+            StatutContratEnum::SIGNE->value      => 'Signé',
+            StatutContratEnum::ANNULE->value     => 'Annulé',
+            StatutContratEnum::EXPIRE->value     => 'Expiré',
+        ];
+
+        $html = $this->twig->render('contrat/pdf.html.twig', [
+            'reservation'        => $reservation,
+            'contrat'            => $contrat,
+            'bateau'             => $bateau,
+            'proprietaire'       => $bateau->getProprietaire(),
+            'locataire'          => $reservation->getUtilisateur(),
+            'nombreJours'        => $nombreJours,
+            'statutContratLabel' => $statutLabels[$contrat->getStatutContrat()->value] ?? $contrat->getStatutContrat()->value,
+        ]);
+
+        $options = new Options();
+        $options->set('isRemoteEnabled', false);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('defaultFont', 'DejaVu Sans');
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+
+        return new Response($dompdf->output(), Response::HTTP_OK, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="contrat-reservation-' . $id . '.pdf"',
+        ]);
     }
 }
