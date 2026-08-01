@@ -9,6 +9,7 @@ use App\Entity\Reservation;
 use App\Enum\NotificationTypeEnum;
 use App\Enum\StatutContratEnum;
 use App\Enum\StatutDisponibiliteEnum;
+use App\Enum\StatutPaiementEnum;
 use App\Enum\StatutReservationEnum;
 use App\Repository\BateauRepository;
 use App\Repository\ContratRepository;
@@ -281,6 +282,16 @@ class ReservationController extends AbstractController
             $statut = StatutReservationEnum::tryFrom($data['id_statut_reservation']);
             if (!$statut) return $this->json(['message' => 'Statut invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
             $reservation->setStatutReservation($statut);
+
+            // La confirmation par le propriétaire vaut encaissement pour le locataire : on marque le
+            // paiement comme payé ici plutôt que de dépendre du webhook Stripe (souvent indisponible en local).
+            if ($statut === StatutReservationEnum::CONFIRMEE) {
+                foreach ($reservation->getPaiements() as $paiement) {
+                    if ($paiement->getStatutPaiement() === StatutPaiementEnum::EN_ATTENTE) {
+                        $paiement->setStatutPaiement(StatutPaiementEnum::PAYE);
+                    }
+                }
+            }
         }
 
         $errors = $this->validator->validate($reservation);
