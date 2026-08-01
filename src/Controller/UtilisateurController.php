@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Utilisateur;
 use App\Enum\RoleEnum;
 use App\Repository\UtilisateurRepository;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Enum\StatutCompteEnum;
 use OpenApi\Attributes as OA;
@@ -199,6 +200,7 @@ class UtilisateurController extends AbstractController
             new OA\Response(response: 204, description: 'Supprimé avec succès'),
             new OA\Response(response: 403, description: 'Accès refusé'),
             new OA\Response(response: 404, description: 'Utilisateur non trouvé'),
+            new OA\Response(response: 409, description: 'Des données liées (bateaux, réservations, avis...) empêchent la suppression'),
         ]
     )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
@@ -212,7 +214,15 @@ class UtilisateurController extends AbstractController
         }
 
         $this->em->remove($utilisateur);
-        $this->em->flush();
+
+        try {
+            $this->em->flush();
+        } catch (ForeignKeyConstraintViolationException) {
+            return $this->json(
+                ['message' => 'Impossible de supprimer cet utilisateur : des bateaux, réservations ou avis lui sont encore associés.'],
+                Response::HTTP_CONFLICT
+            );
+        }
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
