@@ -89,7 +89,7 @@ class OwnerRequest
     private ?\DateTimeInterface $validatedAt = null;
 
     #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[ORM\JoinColumn(name: 'validated_by', nullable: true, onDelete: 'SET NULL')]
     #[Groups(['owner_request:read'])]
     private ?Utilisateur $validatedBy = null;
 
