@@ -52,7 +52,9 @@ services:
     image: dunglas/mercure
     restart: unless-stopped
     env_file:
-      - .env.local
+      # Absent en CI (fichier local non versionné) : ne doit pas faire échouer `docker compose up`.
+      - path: .env.local
+        required: false
     environment:
       # HTTPS is terminated upstream (host Caddy + nginx), so serve plain HTTP here
       SERVER_NAME: ':80'
