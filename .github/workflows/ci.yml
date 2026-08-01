@@ -23,7 +23,9 @@ jobs:
         run: docker compose -f compose.yaml up -d --build
         env:
           APP_SECRET: ci_secret_not_used_in_tests
-          POSTGRES_PASSWORD: sailingloc_password
+          # Doit matcher le mot de passe codé en dur dans DATABASE_URL (.env / .env.test),
+          # sinon l'app ne peut pas se connecter à Postgres ("password authentication failed").
+          POSTGRES_PASSWORD: change_me_in_env_local
           JWT_PASSPHRASE: ${{ secrets.JWT_PASSPHRASE }}
 
       - name: Attendre que la base soit prête
