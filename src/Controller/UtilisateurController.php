@@ -33,14 +33,14 @@ class UtilisateurController extends AbstractController
 
     #[OA\Get(
         path: '/api/utilisateurs',
-        summary: 'Lister tous les utilisateurs (ADMIN)',
+        summary: 'Lister tous les utilisateurs (ADMIN, PROPRIETAIRE)',
         responses: [
             new OA\Response(response: 200, description: 'Liste des utilisateurs'),
             new OA\Response(response: 403, description: 'Accès refusé'),
         ]
     )]
     #[Route('', name: 'list', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
+    #[IsGranted('ROLE_PROPRIETAIRE')]
     public function list(): JsonResponse
     {
         $utilisateurs = $this->repository->findAll();
