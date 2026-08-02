@@ -145,8 +145,11 @@ class ReservationController extends AbstractController
         ]
     )]
     #[Route('', name: 'create', methods: ['POST'])]
-    public function create(Request $request): JsonResponse
-    {
+    public function create(
+        Request $request,
+        #[Autowire(env: 'FRONTEND_URL')]
+        string $frontendUrl,
+    ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
         if (!$data) {
@@ -216,12 +219,27 @@ class ReservationController extends AbstractController
         // Bloquer automatiquement la période dans le planning des disponibilités
         $this->bloquerDisponibilite($reservation);
 
+        $proprietaire = $bateau->getProprietaire();
+
+        $email = (new Email())
+            ->to($proprietaire->getEmail())
+            ->subject('Nouvelle réservation sur SailingLoc')
+            ->html($this->renderView('emails/nouvelle_reservation.html.twig', [
+                'prenom'         => $proprietaire->getPrenom(),
+                'clientNom'      => "{$utilisateur->getPrenom()} {$utilisateur->getNom()}",
+                'nomBateau'      => $bateau->getNomBateau(),
+                'dateDebut'      => $dateDebut->format('d/m/Y'),
+                'dateFin'        => $dateFin->format('d/m/Y'),
+                'reservationUrl' => $frontendUrl . '/reservations/' . $reservation->getId(),
+            ]));
+
         $this->notificationService->notifier(
-            $bateau->getProprietaire(),
+            $proprietaire,
             NotificationTypeEnum::NOUVELLE_RESERVATION,
             'Nouvelle réservation',
             "{$utilisateur->getPrenom()} {$utilisateur->getNom()} a réservé {$bateau->getNomBateau()} du {$dateDebut->format('d/m/Y')} au {$dateFin->format('d/m/Y')}.",
             $reservation,
+            $email,
         );
 
         return $this->json($reservation, Response::HTTP_CREATED, [], ['groups' => ['reservation:read']]);
