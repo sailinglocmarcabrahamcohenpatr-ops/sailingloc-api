@@ -8,6 +8,7 @@ use App\Repository\AvisRepository;
 use App\Repository\BateauRepository;
 use App\Repository\PortRepository;
 use App\Repository\TypeBateauRepository;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -276,6 +277,7 @@ class BateauController extends AbstractController
             new OA\Response(response: 204, description: 'Supprimé'),
             new OA\Response(response: 403, description: 'Accès refusé'),
             new OA\Response(response: 404, description: 'Bateau non trouvé'),
+            new OA\Response(response: 409, description: 'Des réservations sont encore associées à ce bateau'),
         ]
     )]
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
@@ -293,7 +295,15 @@ class BateauController extends AbstractController
         }
 
         $this->em->remove($bateau);
-        $this->em->flush();
+
+        try {
+            $this->em->flush();
+        } catch (ForeignKeyConstraintViolationException) {
+            return $this->json(
+                ['message' => 'Impossible de supprimer ce bateau : des réservations lui sont encore associées.'],
+                Response::HTTP_CONFLICT
+            );
+        }
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
