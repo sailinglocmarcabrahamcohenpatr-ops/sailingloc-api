@@ -20,6 +20,7 @@ use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -49,6 +50,7 @@ class ReservationController extends AbstractController
         private readonly ValidatorInterface $validator,
         private readonly NotificationService $notificationService,
         private readonly Environment $twig,
+        private readonly LoggerInterface $logger,
     ) {}
 
     /** Calcule le montant total (sous-total + frais de service) à partir du prix/jour réel du bateau. */
@@ -340,19 +342,29 @@ class ReservationController extends AbstractController
             // La facture et le contrat, déjà consultables depuis le dashboard locataire,
             // sont aussi joints à l'email de confirmation pour que le locataire les ait
             // directement sous la main sans avoir à se reconnecter à la plateforme.
-            $email->attach(
-                $this->genererFacturePdf($reservation),
-                'facture-reservation-' . $reservation->getId() . '.pdf',
-                'application/pdf',
-            );
-
-            $contratPdf = $this->genererContratPdf($reservation);
-            if ($contratPdf !== null) {
+            // Best-effort comme l'envoi d'email lui-même (cf. NotificationService::notifier) :
+            // la réservation est déjà confirmée en base à ce stade, un souci de génération PDF
+            // ne doit jamais faire échouer la requête de confirmation du propriétaire.
+            try {
                 $email->attach(
-                    $contratPdf,
-                    'contrat-reservation-' . $reservation->getId() . '.pdf',
+                    $this->genererFacturePdf($reservation),
+                    'facture-reservation-' . $reservation->getId() . '.pdf',
                     'application/pdf',
                 );
+
+                $contratPdf = $this->genererContratPdf($reservation);
+                if ($contratPdf !== null) {
+                    $email->attach(
+                        $contratPdf,
+                        'contrat-reservation-' . $reservation->getId() . '.pdf',
+                        'application/pdf',
+                    );
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
+                    'id'    => $reservation->getId(),
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             $this->notificationService->notifier(
