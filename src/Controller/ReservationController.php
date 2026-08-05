@@ -511,6 +511,13 @@ class ReservationController extends AbstractController
     }
 
     // ─── Génération PDF (facture / contrat) ────────────────────────────────────
+    // Identité légale de l'éditeur — doit rester synchronisée avec shared/config (frontend).
+    private const LEGAL_COMPANY_NAME = 'SailingLoc SAS';
+    private const LEGAL_ADDRESS = '12 quai du Port, 13002 Marseille, France';
+    private const LEGAL_SIRET = '123 456 789 00012';
+    private const LEGAL_SIREN = '123 456 789';
+    private const LEGAL_RCS = 'Marseille B 123 456 789';
+    private const LEGAL_TVA = 'FR 12 123456789';
 
     /** Rend le contrat de location en PDF, ou null si la réservation n'a pas de contrat associé. */
     private function genererContratPdf(Reservation $reservation): ?string
@@ -538,6 +545,24 @@ class ReservationController extends AbstractController
             'locataire'          => $reservation->getUtilisateur(),
             'nombreJours'        => $nombreJours,
             'statutContratLabel' => $statutLabels[$contrat->getStatutContrat()->value] ?? $contrat->getStatutContrat()->value,
+            'caution'            => $bateau->getCaution() !== null && (float) $bateau->getCaution() > 0
+                ? number_format((float) $bateau->getCaution(), 2, ',', ' ') . ' €'
+                : 'Non renseignée',
+            'carburant'          => $bateau->isCarburantInclus()
+                ? 'Inclus'
+                : 'Non inclus, à restituer avec le niveau constaté au départ',
+            'permis'             => $bateau->isPermisRequis()
+                ? 'Oui — permis côtier ou hauturier valide exigé'
+                : 'Non requis',
+            'skipper'            => $bateau->isAvecSkipper()
+                ? 'Inclus'
+                : 'Non inclus — navigation par le locataire',
+            'legalCompanyName'   => self::LEGAL_COMPANY_NAME,
+            'legalAddress'       => self::LEGAL_ADDRESS,
+            'legalSiret'         => self::LEGAL_SIRET,
+            'legalSiren'         => self::LEGAL_SIREN,
+            'legalRcs'           => self::LEGAL_RCS,
+            'legalTva'           => self::LEGAL_TVA,
         ]);
 
         return $this->rendrePdf($html);
@@ -556,10 +581,19 @@ class ReservationController extends AbstractController
             StatutPaiementEnum::ECHOUE->value     => 'Paiement échoué',
             StatutPaiementEnum::REMBOURSE->value  => 'Remboursée',
         ];
+        $statutPaiementKeys = [
+            StatutPaiementEnum::EN_ATTENTE->value => 'pending',
+            StatutPaiementEnum::PAYE->value       => 'paid',
+            StatutPaiementEnum::ECHOUE->value     => 'failed',
+            StatutPaiementEnum::REMBOURSE->value  => 'cancelled',
+        ];
         $dernierPaiement = $reservation->getPaiements()->last() ?: null;
         $statutPaiementLabel = $dernierPaiement
             ? ($statutPaiementLabels[$dernierPaiement->getStatutPaiement()->value] ?? $dernierPaiement->getStatutPaiement()->value)
             : "En attente d'encaissement";
+        $statutPaiementKey = $dernierPaiement
+            ? ($statutPaiementKeys[$dernierPaiement->getStatutPaiement()->value] ?? 'pending')
+            : 'pending';
 
         $html = $this->twig->render('facture/pdf.html.twig', [
             'reservation'          => $reservation,
@@ -569,6 +603,7 @@ class ReservationController extends AbstractController
             'nombreJours'          => $nombreJours,
             'numeroFacture'        => $numeroFacture,
             'statutPaiementLabel'  => $statutPaiementLabel,
+            'statutPaiementKey'    => $statutPaiementKey,
         ]);
 
         return $this->rendrePdf($html);

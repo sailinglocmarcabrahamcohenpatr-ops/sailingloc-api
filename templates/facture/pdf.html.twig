@@ -4,171 +4,128 @@
     <meta charset="UTF-8">
     <title>Facture — Réservation #{{ reservation.id }}</title>
     <style>
-        @page { margin: 32px 36px; }
+        @page { margin: 0; }
         body {
+            margin: 0;
             font-family: DejaVu Sans, Arial, sans-serif;
-            background-color: #f0f4f8;
-            color: #111827;
+            color: #282828;
             font-size: 12px;
             line-height: 1.5;
         }
-        .brand {
-            font-size: 15px;
-            font-weight: bold;
-            color: #0a4d8c;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-        h1 {
-            font-size: 20px;
-            color: #111827;
-            margin: 0 0 4px;
-        }
-        .sub {
-            color: #6b7280;
-            font-size: 11px;
-            margin-bottom: 24px;
-        }
-        .statut {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            color: #ffffff;
-            background: #0a4d8c;
-        }
-        table.section {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 18px;
-        }
-        table.section td {
-            vertical-align: top;
-            width: 50%;
-            padding: 0;
-        }
-        .box {
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 14px 16px;
-        }
-        .box + .box { margin-left: 12px; }
-        .box-title {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #9ca3af;
-            margin-bottom: 6px;
-        }
-        .box p { margin: 0 0 3px; }
-        .box strong { color: #111827; }
-        table.details {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 18px;
-        }
-        table.details th, table.details td {
-            border: 1px solid #e5e7eb;
-            padding: 8px 10px;
-            text-align: left;
-            font-size: 11px;
-        }
-        table.details th {
-            background: #f8fafc;
-            color: #6b7280;
-            font-weight: bold;
-            width: 45%;
-        }
-        .montant {
-            font-size: 15px;
-            font-weight: bold;
-            color: #0a4d8c;
-        }
-        .total-banner {
-            background: #0a4d8c;
-            border-radius: 8px;
-            padding: 14px 16px;
-            margin-bottom: 18px;
-            text-align: right;
-        }
-        .total-banner .label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #c4d2e0;
-        }
-        .total-banner .amount {
-            font-size: 18px;
-            font-weight: bold;
-            color: #ffffff;
-        }
-        .footer {
-            margin-top: 28px;
-            padding-top: 12px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 9px;
-            color: #9ca3af;
-            text-align: center;
-        }
+        .content { padding: 0 36px 36px; }
+
+        .band { background: #0b1929; padding: 22px 36px; margin-bottom: 28px; }
+        .band table { width: 100%; border-collapse: collapse; }
+        .band td { vertical-align: top; }
+        .brand-logo { vertical-align: middle; margin-right: 8px; height: 20px; }
+        .brand-name { font-size: 20px; font-weight: bold; color: #ffffff; }
+        .tagline { font-size: 9px; color: #c4d2e0; margin-top: 6px; }
+        .doc-title { font-size: 16px; font-weight: bold; color: #ffffff; text-align: right; }
+        .doc-meta { font-size: 9px; color: #c4d2e0; text-align: right; margin-top: 8px; line-height: 1.7; }
+
+        .cards { width: 100%; border-collapse: separate; border-spacing: 16px 0; margin-bottom: 26px; }
+        .card { background: #f6f8fa; border: 1px solid #dee3e9; border-radius: 4px; padding: 14px 16px; width: 50%; vertical-align: top; }
+        .card-label { font-size: 8px; font-weight: bold; color: #114b6b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .card-line { font-size: 10px; color: #282828; margin: 0 0 3px; }
+        .card-line.strong { font-weight: bold; }
+
+        .section-title { font-size: 11px; font-weight: bold; color: #0b1929; margin: 0 0 10px; }
+
+        .grid-table { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+        .grid-table th { background: #0b1929; color: #ffffff; font-size: 9px; font-weight: bold; text-align: left; padding: 9px 10px; }
+        .grid-table td { border: 0.6px solid #dee3e9; font-size: 9px; color: #282828; padding: 9px 10px; }
+        .grid-table th.right, .grid-table td.right { text-align: right; }
+        .grid-table td.strong { font-weight: bold; }
+
+        .bottom-row { width: 100%; border-collapse: collapse; }
+        .status-cell { vertical-align: top; width: 50%; }
+        .muted-label { font-size: 8px; font-weight: bold; color: #6e7672; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 10px; font-size: 9px; font-weight: bold; }
+        .badge-paid { color: #107a57; background: #def5ea; }
+        .badge-pending { color: #b46a08; background: #fef3d2; }
+        .badge-failed { color: #be2828; background: #fce0e0; }
+        .badge-cancelled { color: #6e7672; background: #edefee; }
+
+        .total-cell { vertical-align: top; width: 50%; text-align: right; }
+        .total-banner { display: inline-block; background: #0b1929; border-radius: 5px; padding: 10px 18px; text-align: left; }
+        .total-label { font-size: 9px; color: #c4d2e0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .total-amount { font-size: 17px; font-weight: bold; color: #ffffff; margin-top: 4px; }
+
+        .footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #dee3e9; font-size: 8px; font-style: italic; color: #6e7672; }
     </style>
 </head>
 <body>
-    <div class="brand"><svg width="14" height="18" viewBox="0 0 48 60" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:6px;"><path d="M24 57C13 44 6 33 6 21.5 6 11 14.1 3 24 3s18 8 18 18.5C42 33 35 44 24 57Z" fill="none" stroke="#0a4d8c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"></path><path d="M24 14 34 34H14Z" fill="#0a4d8c"></path><path d="M10 34Q24 30 38 34Q24 42 10 34Z" fill="#0a4d8c"></path><path d="M8 47q8-5 16 0t16 0" fill="none" stroke="#0a4d8c" stroke-width="2.4" stroke-linecap="round"></path></svg>SailingLoc</div>
-    <h1>Facture</h1>
-    <div class="sub">
-        N° {{ numeroFacture }} — émise le {{ "now"|date("d/m/Y") }}
-        &nbsp;·&nbsp;
-        <span class="statut">{{ statutPaiementLabel }}</span>
+    <div class="band">
+        <table>
+            <tr>
+                <td style="width: 50%;">
+                    <img class="brand-logo" width="16" height="20" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA0OCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjQgNTdDMTMgNDQgNiAzMyA2IDIxLjUgNiAxMSAxNC4xIDMgMjQgM3MxOCA4IDE4IDE4LjVDNDIgMzMgMzUgNDQgMjQgNTdaIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTI0IDE0IDM0IDM0SDE0WiIgZmlsbD0iI2ZmZmZmZiIvPjxwYXRoIGQ9Ik0xMCAzNFEyNCAzMCAzOCAzNFEyNCA0MiAxMCAzNFoiIGZpbGw9IiNmZmZmZmYiLz48cGF0aCBkPSJNOCA0N3E4LTUgMTYgMHQxNiAwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=" /><span class="brand-name">SailingLoc</span>
+                    <div class="tagline">Location de bateaux entre particuliers</div>
+                </td>
+                <td style="width: 50%;">
+                    <div class="doc-title">FACTURE</div>
+                    <div class="doc-meta">N° {{ numeroFacture }}<br>Émise le {{ "now"|date("d/m/Y") }}</div>
+                </td>
+            </tr>
+        </table>
     </div>
 
-    <table class="section">
-        <tr>
-            <td>
-                <div class="box">
-                    <div class="box-title">Facturé à</div>
-                    <p><strong>{{ locataire.prenom }} {{ locataire.nom }}</strong></p>
-                    <p>{{ locataire.email }}</p>
-                </div>
-            </td>
-            <td>
-                <div class="box">
-                    <div class="box-title">Loué auprès de</div>
-                    <p><strong>{{ proprietaire.prenom }} {{ proprietaire.nom }}</strong></p>
-                    <p>{{ proprietaire.email }}</p>
-                </div>
-            </td>
-        </tr>
-    </table>
+    <div class="content">
+        <table class="cards">
+            <tr>
+                <td class="card">
+                    <div class="card-label">Facturé à</div>
+                    <div class="card-line strong">{{ locataire.prenom }} {{ locataire.nom }}</div>
+                    <div class="card-line">{{ locataire.email }}</div>
+                </td>
+                <td class="card">
+                    <div class="card-label">Loué auprès de</div>
+                    <div class="card-line strong">{{ proprietaire.prenom }} {{ proprietaire.nom }}</div>
+                    <div class="card-line">{{ proprietaire.email }}</div>
+                </td>
+            </tr>
+        </table>
 
-    <table class="details">
-        <tr>
-            <th>Bateau</th>
-            <td>{{ bateau.nomBateau }}{{ bateau.port ? ' — ' ~ bateau.port.nom ~ ' (' ~ bateau.port.ville ~ ')' : '' }}</td>
-        </tr>
-        <tr>
-            <th>Période de location</th>
-            <td>Du {{ reservation.dateDebut|date("d/m/Y") }} au {{ reservation.dateFin|date("d/m/Y") }} ({{ nombreJours }} jour{{ nombreJours > 1 ? 's' : '' }})</td>
-        </tr>
-        <tr>
-            <th>Date de réservation</th>
-            <td>{{ reservation.dateReservation|date("d/m/Y") }}</td>
-        </tr>
-        <tr>
-            <th>Montant total</th>
-            <td class="montant">{{ reservation.montantTotal|number_format(2, ',', ' ') }} €</td>
-        </tr>
-    </table>
+        <div class="section-title">Détail de la location</div>
+        <table class="grid-table">
+            <thead>
+                <tr>
+                    <th>Bateau</th>
+                    <th>Port</th>
+                    <th>Période</th>
+                    <th>Durée</th>
+                    <th class="right">Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ bateau.nomBateau }}</td>
+                    <td>{{ bateau.port ? bateau.port.ville : '—' }}</td>
+                    <td>{{ reservation.dateDebut|date("d/m/Y") }} - {{ reservation.dateFin|date("d/m/Y") }}</td>
+                    <td>{{ nombreJours }} nuit{{ nombreJours > 1 ? 's' : '' }}</td>
+                    <td class="right strong">{{ reservation.montantTotal|number_format(2, ',', ' ') }} €</td>
+                </tr>
+            </tbody>
+        </table>
 
-    <div class="total-banner">
-        <div class="label">Total TTC</div>
-        <div class="amount">{{ reservation.montantTotal|number_format(2, ',', ' ') }} €</div>
-    </div>
+        <table class="bottom-row">
+            <tr>
+                <td class="status-cell">
+                    <div class="muted-label">Statut du paiement</div>
+                    <span class="badge badge-{{ statutPaiementKey }}">{{ statutPaiementLabel }}</span>
+                </td>
+                <td class="total-cell">
+                    <div class="total-banner">
+                        <div class="total-label">Total TTC</div>
+                        <div class="total-amount">{{ reservation.montantTotal|number_format(2, ',', ' ') }} €</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-    <div class="footer">
-        Document généré automatiquement par la plateforme SailingLoc — facture #{{ numeroFacture }} associée à la réservation #{{ reservation.id }}.<br>
-        Ce document tient lieu de facture pour la prestation de location réservée via SailingLoc.
+        <div class="footer">
+            SailingLoc — plateforme de location de bateaux entre particuliers. Ce document tient lieu de facture pour la prestation de location réservée via SailingLoc.
+        </div>
     </div>
 </body>
 </html>
