@@ -235,6 +235,32 @@ class ReservationController extends AbstractController
                 'reservationUrl' => $frontendUrl . '/reservations/' . $reservation->getId(),
             ]));
 
+        // Même logique que pour l'email de confirmation : la facture (montant, statut de
+        // paiement "en attente" à ce stade) et le contrat créé avec la réservation sont
+        // joints pour que le propriétaire ait tout de suite le détail complet, best-effort
+        // pour ne jamais faire échouer la création de la réservation elle-même.
+        try {
+            $email->attach(
+                $this->genererFacturePdf($reservation),
+                'facture-reservation-' . $reservation->getId() . '.pdf',
+                'application/pdf',
+            );
+
+            $contratPdf = $this->genererContratPdf($reservation);
+            if ($contratPdf !== null) {
+                $email->attach(
+                    $contratPdf,
+                    'contrat-reservation-' . $reservation->getId() . '.pdf',
+                    'application/pdf',
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
+                'id'    => $reservation->getId(),
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         $this->notificationService->notifier(
             $proprietaire,
             NotificationTypeEnum::NOUVELLE_RESERVATION,
