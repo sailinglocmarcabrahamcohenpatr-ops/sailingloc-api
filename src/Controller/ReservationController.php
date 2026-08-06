@@ -239,27 +239,7 @@ class ReservationController extends AbstractController
         // paiement "en attente" à ce stade) et le contrat créé avec la réservation sont
         // joints pour que le propriétaire ait tout de suite le détail complet, best-effort
         // pour ne jamais faire échouer la création de la réservation elle-même.
-        try {
-            $email->attach(
-                $this->genererFacturePdf($reservation),
-                'facture-reservation-' . $reservation->getId() . '.pdf',
-                'application/pdf',
-            );
-
-            $contratPdf = $this->genererContratPdf($reservation);
-            if ($contratPdf !== null) {
-                $email->attach(
-                    $contratPdf,
-                    'contrat-reservation-' . $reservation->getId() . '.pdf',
-                    'application/pdf',
-                );
-            }
-        } catch (\Throwable $e) {
-            $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
-                'id'    => $reservation->getId(),
-                'error' => $e->getMessage(),
-            ]);
-        }
+        $this->joindrePdfReservation($email, $reservation);
 
         $this->notificationService->notifier(
             $proprietaire,
@@ -371,27 +351,7 @@ class ReservationController extends AbstractController
             // Best-effort comme l'envoi d'email lui-même (cf. NotificationService::notifier) :
             // la réservation est déjà confirmée en base à ce stade, un souci de génération PDF
             // ne doit jamais faire échouer la requête de confirmation du propriétaire.
-            try {
-                $email->attach(
-                    $this->genererFacturePdf($reservation),
-                    'facture-reservation-' . $reservation->getId() . '.pdf',
-                    'application/pdf',
-                );
-
-                $contratPdf = $this->genererContratPdf($reservation);
-                if ($contratPdf !== null) {
-                    $email->attach(
-                        $contratPdf,
-                        'contrat-reservation-' . $reservation->getId() . '.pdf',
-                        'application/pdf',
-                    );
-                }
-            } catch (\Throwable $e) {
-                $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
-                    'id'    => $reservation->getId(),
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $this->joindrePdfReservation($email, $reservation);
 
             $this->notificationService->notifier(
                 $client,
@@ -549,6 +509,46 @@ class ReservationController extends AbstractController
     }
 
     // ─── Génération PDF (facture / contrat) ────────────────────────────────────
+
+    /**
+     * Joint facture + contrat PDF à un email de réservation, best-effort : un souci
+     * de génération ne doit jamais faire échouer la requête (création ou confirmation).
+     *
+     * La génération des 2 PDF est resynchrone dans la requête HTTP ; on s'assure ici
+     * de disposer d'assez de budget d'exécution PHP pour ne pas se faire tuer par
+     * max_execution_time (60s par défaut, cf. docker/php/uploads.ini) avant d'avoir
+     * pu joindre les PDF — un tel timeout n'est pas rattrapable par le catch ci-dessous.
+     */
+    private function joindrePdfReservation(Email $email, Reservation $reservation): void
+    {
+        $limiteInitiale = ini_get('max_execution_time');
+        @set_time_limit(120);
+
+        try {
+            $email->attach(
+                $this->genererFacturePdf($reservation),
+                'facture-reservation-' . $reservation->getId() . '.pdf',
+                'application/pdf',
+            );
+
+            $contratPdf = $this->genererContratPdf($reservation);
+            if ($contratPdf !== null) {
+                $email->attach(
+                    $contratPdf,
+                    'contrat-reservation-' . $reservation->getId() . '.pdf',
+                    'application/pdf',
+                );
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
+                'id'    => $reservation->getId(),
+                'error' => $e->getMessage(),
+            ]);
+        } finally {
+            @set_time_limit((int) $limiteInitiale);
+        }
+    }
+
     // Identité légale de l'éditeur — doit rester synchronisée avec shared/config (frontend).
     private const LEGAL_COMPANY_NAME = 'SailingLoc SAS';
     private const LEGAL_ADDRESS = '12 quai du Port, 13002 Marseille, France';
@@ -652,7 +652,12 @@ class ReservationController extends AbstractController
     {
         $options = new Options();
         $options->set('isRemoteEnabled', false);
-        $options->set('isHtml5ParserEnabled', true);
+        // Le HTML des templates facture/contrat est simple et bien formé : le parseur
+        // HTML5 (masterminds/html5) n'apporte rien ici et coûte cher en temps de rendu.
+        // Avec 2 PDF générés en synchrone dans la requête de réservation, ce surcoût
+        // pouvait suffire à dépasser max_execution_time (60s) et provoquer un 500 non
+        // rattrapable par le try/catch (un timeout PHP n'est jamais catchable).
+        $options->set('isHtml5ParserEnabled', false);
         $options->set('defaultFont', 'DejaVu Sans');
 
         $dompdf = new Dompdf($options);
