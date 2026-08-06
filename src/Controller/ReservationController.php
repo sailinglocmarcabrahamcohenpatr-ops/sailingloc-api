@@ -20,7 +20,6 @@ use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -50,7 +49,6 @@ class ReservationController extends AbstractController
         private readonly ValidatorInterface $validator,
         private readonly NotificationService $notificationService,
         private readonly Environment $twig,
-        private readonly LoggerInterface $logger,
     ) {}
 
     /** Calcule le montant total (sous-total + frais de service) à partir du prix/jour réel du bateau. */
@@ -235,32 +233,6 @@ class ReservationController extends AbstractController
                 'reservationUrl' => $frontendUrl . '/reservations/' . $reservation->getId(),
             ]));
 
-        // Même logique que pour l'email de confirmation : la facture (montant, statut de
-        // paiement "en attente" à ce stade) et le contrat créé avec la réservation sont
-        // joints pour que le propriétaire ait tout de suite le détail complet, best-effort
-        // pour ne jamais faire échouer la création de la réservation elle-même.
-        try {
-            $email->attach(
-                $this->genererFacturePdf($reservation),
-                'facture-reservation-' . $reservation->getId() . '.pdf',
-                'application/pdf',
-            );
-
-            $contratPdf = $this->genererContratPdf($reservation);
-            if ($contratPdf !== null) {
-                $email->attach(
-                    $contratPdf,
-                    'contrat-reservation-' . $reservation->getId() . '.pdf',
-                    'application/pdf',
-                );
-            }
-        } catch (\Throwable $e) {
-            $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
-                'id'    => $reservation->getId(),
-                'error' => $e->getMessage(),
-            ]);
-        }
-
         $this->notificationService->notifier(
             $proprietaire,
             NotificationTypeEnum::NOUVELLE_RESERVATION,
@@ -364,34 +336,6 @@ class ReservationController extends AbstractController
                     'dateFin'        => $reservation->getDateFin()->format('d/m/Y'),
                     'reservationUrl' => $frontendUrl . '/reservations/' . $reservation->getId(),
                 ]));
-
-            // La facture et le contrat, déjà consultables depuis le dashboard locataire,
-            // sont aussi joints à l'email de confirmation pour que le locataire les ait
-            // directement sous la main sans avoir à se reconnecter à la plateforme.
-            // Best-effort comme l'envoi d'email lui-même (cf. NotificationService::notifier) :
-            // la réservation est déjà confirmée en base à ce stade, un souci de génération PDF
-            // ne doit jamais faire échouer la requête de confirmation du propriétaire.
-            try {
-                $email->attach(
-                    $this->genererFacturePdf($reservation),
-                    'facture-reservation-' . $reservation->getId() . '.pdf',
-                    'application/pdf',
-                );
-
-                $contratPdf = $this->genererContratPdf($reservation);
-                if ($contratPdf !== null) {
-                    $email->attach(
-                        $contratPdf,
-                        'contrat-reservation-' . $reservation->getId() . '.pdf',
-                        'application/pdf',
-                    );
-                }
-            } catch (\Throwable $e) {
-                $this->logger->error('Échec de la génération des PDF (facture/contrat) pour la réservation {id}: {error}', [
-                    'id'    => $reservation->getId(),
-                    'error' => $e->getMessage(),
-                ]);
-            }
 
             $this->notificationService->notifier(
                 $client,
@@ -537,32 +481,9 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
         }
 
-        $pdf = $this->genererContratPdf($reservation);
-        if ($pdf === null) {
-            return $this->json(['message' => 'Aucun contrat associé à cette réservation.'], Response::HTTP_NOT_FOUND);
-        }
-
-        return new Response($pdf, Response::HTTP_OK, [
-            'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="contrat-reservation-' . $id . '.pdf"',
-        ]);
-    }
-
-    // ─── Génération PDF (facture / contrat) ────────────────────────────────────
-    // Identité légale de l'éditeur — doit rester synchronisée avec shared/config (frontend).
-    private const LEGAL_COMPANY_NAME = 'SailingLoc SAS';
-    private const LEGAL_ADDRESS = '12 quai du Port, 13002 Marseille, France';
-    private const LEGAL_SIRET = '123 456 789 00012';
-    private const LEGAL_SIREN = '123 456 789';
-    private const LEGAL_RCS = 'Marseille B 123 456 789';
-    private const LEGAL_TVA = 'FR 12 123456789';
-
-    /** Rend le contrat de location en PDF, ou null si la réservation n'a pas de contrat associé. */
-    private function genererContratPdf(Reservation $reservation): ?string
-    {
         $contrat = $reservation->getContrat();
         if (!$contrat) {
-            return null;
+            return $this->json(['message' => 'Aucun contrat associé à cette réservation.'], Response::HTTP_NOT_FOUND);
         }
 
         $bateau = $reservation->getBateau();
@@ -583,73 +504,8 @@ class ReservationController extends AbstractController
             'locataire'          => $reservation->getUtilisateur(),
             'nombreJours'        => $nombreJours,
             'statutContratLabel' => $statutLabels[$contrat->getStatutContrat()->value] ?? $contrat->getStatutContrat()->value,
-            'caution'            => $bateau->getCaution() !== null && (float) $bateau->getCaution() > 0
-                ? number_format((float) $bateau->getCaution(), 2, ',', ' ') . ' €'
-                : 'Non renseignée',
-            'carburant'          => $bateau->isCarburantInclus()
-                ? 'Inclus'
-                : 'Non inclus, à restituer avec le niveau constaté au départ',
-            'permis'             => $bateau->isPermisRequis()
-                ? 'Oui — permis côtier ou hauturier valide exigé'
-                : 'Non requis',
-            'skipper'            => $bateau->isAvecSkipper()
-                ? 'Inclus'
-                : 'Non inclus — navigation par le locataire',
-            'legalCompanyName'   => self::LEGAL_COMPANY_NAME,
-            'legalAddress'       => self::LEGAL_ADDRESS,
-            'legalSiret'         => self::LEGAL_SIRET,
-            'legalSiren'         => self::LEGAL_SIREN,
-            'legalRcs'           => self::LEGAL_RCS,
-            'legalTva'           => self::LEGAL_TVA,
         ]);
 
-        return $this->rendrePdf($html);
-    }
-
-    /** Rend la facture de la réservation en PDF. */
-    private function genererFacturePdf(Reservation $reservation): string
-    {
-        $bateau = $reservation->getBateau();
-        $nombreJours = max(1, (int) $reservation->getDateDebut()->diff($reservation->getDateFin())->days);
-        $numeroFacture = sprintf('FACT-%s-%06d', $reservation->getDateReservation()->format('Y'), $reservation->getId());
-
-        $statutPaiementLabels = [
-            StatutPaiementEnum::EN_ATTENTE->value => "En attente d'encaissement",
-            StatutPaiementEnum::PAYE->value       => 'Payée',
-            StatutPaiementEnum::ECHOUE->value     => 'Paiement échoué',
-            StatutPaiementEnum::REMBOURSE->value  => 'Remboursée',
-        ];
-        $statutPaiementKeys = [
-            StatutPaiementEnum::EN_ATTENTE->value => 'pending',
-            StatutPaiementEnum::PAYE->value       => 'paid',
-            StatutPaiementEnum::ECHOUE->value     => 'failed',
-            StatutPaiementEnum::REMBOURSE->value  => 'cancelled',
-        ];
-        $dernierPaiement = $reservation->getPaiements()->last() ?: null;
-        $statutPaiementLabel = $dernierPaiement
-            ? ($statutPaiementLabels[$dernierPaiement->getStatutPaiement()->value] ?? $dernierPaiement->getStatutPaiement()->value)
-            : "En attente d'encaissement";
-        $statutPaiementKey = $dernierPaiement
-            ? ($statutPaiementKeys[$dernierPaiement->getStatutPaiement()->value] ?? 'pending')
-            : 'pending';
-
-        $html = $this->twig->render('facture/pdf.html.twig', [
-            'reservation'          => $reservation,
-            'bateau'               => $bateau,
-            'proprietaire'         => $bateau->getProprietaire(),
-            'locataire'            => $reservation->getUtilisateur(),
-            'nombreJours'          => $nombreJours,
-            'numeroFacture'        => $numeroFacture,
-            'statutPaiementLabel'  => $statutPaiementLabel,
-            'statutPaiementKey'    => $statutPaiementKey,
-        ]);
-
-        return $this->rendrePdf($html);
-    }
-
-    /** Convertit un fragment HTML en contenu binaire PDF via Dompdf. */
-    private function rendrePdf(string $html): string
-    {
         $options = new Options();
         $options->set('isRemoteEnabled', false);
         $options->set('isHtml5ParserEnabled', true);
@@ -660,6 +516,9 @@ class ReservationController extends AbstractController
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        return $dompdf->output();
+        return new Response($dompdf->output(), Response::HTTP_OK, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="contrat-reservation-' . $id . '.pdf"',
+        ]);
     }
 }
