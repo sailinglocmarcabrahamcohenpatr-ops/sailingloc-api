@@ -20,7 +20,6 @@ use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -50,7 +49,6 @@ class ReservationController extends AbstractController
         private readonly ValidatorInterface $validator,
         private readonly NotificationService $notificationService,
         private readonly Environment $twig,
-        private readonly LoggerInterface $logger,
     ) {}
 
     /** Calcule le montant total (sous-total + frais de service) à partir du prix/jour réel du bateau. */
@@ -562,7 +560,7 @@ class ReservationController extends AbstractController
     {
         $contrat = $reservation->getContrat();
         if (!$contrat) {
-            return null;
+            return $this->json(['message' => 'Aucun contrat associé à cette réservation.'], Response::HTTP_NOT_FOUND);
         }
 
         $bateau = $reservation->getBateau();
@@ -583,73 +581,8 @@ class ReservationController extends AbstractController
             'locataire'          => $reservation->getUtilisateur(),
             'nombreJours'        => $nombreJours,
             'statutContratLabel' => $statutLabels[$contrat->getStatutContrat()->value] ?? $contrat->getStatutContrat()->value,
-            'caution'            => $bateau->getCaution() !== null && (float) $bateau->getCaution() > 0
-                ? number_format((float) $bateau->getCaution(), 2, ',', ' ') . ' €'
-                : 'Non renseignée',
-            'carburant'          => $bateau->isCarburantInclus()
-                ? 'Inclus'
-                : 'Non inclus, à restituer avec le niveau constaté au départ',
-            'permis'             => $bateau->isPermisRequis()
-                ? 'Oui — permis côtier ou hauturier valide exigé'
-                : 'Non requis',
-            'skipper'            => $bateau->isAvecSkipper()
-                ? 'Inclus'
-                : 'Non inclus — navigation par le locataire',
-            'legalCompanyName'   => self::LEGAL_COMPANY_NAME,
-            'legalAddress'       => self::LEGAL_ADDRESS,
-            'legalSiret'         => self::LEGAL_SIRET,
-            'legalSiren'         => self::LEGAL_SIREN,
-            'legalRcs'           => self::LEGAL_RCS,
-            'legalTva'           => self::LEGAL_TVA,
         ]);
 
-        return $this->rendrePdf($html);
-    }
-
-    /** Rend la facture de la réservation en PDF. */
-    private function genererFacturePdf(Reservation $reservation): string
-    {
-        $bateau = $reservation->getBateau();
-        $nombreJours = max(1, (int) $reservation->getDateDebut()->diff($reservation->getDateFin())->days);
-        $numeroFacture = sprintf('FACT-%s-%06d', $reservation->getDateReservation()->format('Y'), $reservation->getId());
-
-        $statutPaiementLabels = [
-            StatutPaiementEnum::EN_ATTENTE->value => "En attente d'encaissement",
-            StatutPaiementEnum::PAYE->value       => 'Payée',
-            StatutPaiementEnum::ECHOUE->value     => 'Paiement échoué',
-            StatutPaiementEnum::REMBOURSE->value  => 'Remboursée',
-        ];
-        $statutPaiementKeys = [
-            StatutPaiementEnum::EN_ATTENTE->value => 'pending',
-            StatutPaiementEnum::PAYE->value       => 'paid',
-            StatutPaiementEnum::ECHOUE->value     => 'failed',
-            StatutPaiementEnum::REMBOURSE->value  => 'cancelled',
-        ];
-        $dernierPaiement = $reservation->getPaiements()->last() ?: null;
-        $statutPaiementLabel = $dernierPaiement
-            ? ($statutPaiementLabels[$dernierPaiement->getStatutPaiement()->value] ?? $dernierPaiement->getStatutPaiement()->value)
-            : "En attente d'encaissement";
-        $statutPaiementKey = $dernierPaiement
-            ? ($statutPaiementKeys[$dernierPaiement->getStatutPaiement()->value] ?? 'pending')
-            : 'pending';
-
-        $html = $this->twig->render('facture/pdf.html.twig', [
-            'reservation'          => $reservation,
-            'bateau'               => $bateau,
-            'proprietaire'         => $bateau->getProprietaire(),
-            'locataire'            => $reservation->getUtilisateur(),
-            'nombreJours'          => $nombreJours,
-            'numeroFacture'        => $numeroFacture,
-            'statutPaiementLabel'  => $statutPaiementLabel,
-            'statutPaiementKey'    => $statutPaiementKey,
-        ]);
-
-        return $this->rendrePdf($html);
-    }
-
-    /** Convertit un fragment HTML en contenu binaire PDF via Dompdf. */
-    private function rendrePdf(string $html): string
-    {
         $options = new Options();
         $options->set('isRemoteEnabled', false);
         // Le HTML des templates facture/contrat est simple et bien formé : le parseur
@@ -665,6 +598,9 @@ class ReservationController extends AbstractController
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        return $dompdf->output();
+        return new Response($dompdf->output(), Response::HTTP_OK, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="contrat-reservation-' . $id . '.pdf"',
+        ]);
     }
 }
