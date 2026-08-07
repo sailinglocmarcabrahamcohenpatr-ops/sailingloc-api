@@ -6,9 +6,11 @@ use App\Enum\RoleEnum;
 use App\Enum\StatutPaiementEnum;
 use App\Enum\StatutReservationEnum;
 use App\Repository\AssuranceRepository;
+use App\Repository\EquipementRepository;
 use App\Repository\ModeDePaiementRepository;
 use App\Repository\TypeBateauRepository;
 use App\Repository\TypeDocumentRepository;
+use App\Repository\TypeEquipementRepository;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,6 +26,8 @@ class ReferentielController extends AbstractController
         private readonly TypeDocumentRepository $typeDocumentRepository,
         private readonly ModeDePaiementRepository $modePaiementRepository,
         private readonly AssuranceRepository $assuranceRepository,
+        private readonly TypeEquipementRepository $typeEquipementRepository,
+        private readonly EquipementRepository $equipementRepository,
     ) {}
 
     #[OA\Get(path: '/api/referentiels/types-bateaux', summary: 'Types de bateaux', responses: [new OA\Response(response: 200, description: 'OK')])]
@@ -79,5 +83,19 @@ class ReferentielController extends AbstractController
     public function assurances(): JsonResponse
     {
         return $this->json($this->assuranceRepository->findAll(), Response::HTTP_OK, [], ['groups' => ['referentiel:read']]);
+    }
+
+    #[OA\Get(path: '/api/referentiels/types-equipements', summary: 'Types d\'équipements (avec leurs équipements)', responses: [new OA\Response(response: 200, description: 'OK')])]
+    #[Route('/types-equipements', name: 'types_equipements', methods: ['GET'])]
+    public function typesEquipements(): JsonResponse
+    {
+        return $this->json($this->typeEquipementRepository->findAll(), Response::HTTP_OK, [], ['groups' => ['referentiel:read']]);
+    }
+
+    #[OA\Get(path: '/api/referentiels/equipements', summary: 'Liste de tous les équipements', responses: [new OA\Response(response: 200, description: 'OK')])]
+    #[Route('/equipements', name: 'equipements', methods: ['GET'])]
+    public function equipements(): JsonResponse
+    {
+        return $this->json($this->equipementRepository->findAll(), Response::HTTP_OK, [], ['groups' => ['referentiel:read']]);
     }
 }

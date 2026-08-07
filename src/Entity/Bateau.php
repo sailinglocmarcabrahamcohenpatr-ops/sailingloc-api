@@ -9,6 +9,7 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use App\Entity\Equipement;
 
 #[ORM\Entity(repositoryClass: BateauRepository::class)]
 #[ORM\Table(name: 'bateau')]
@@ -102,6 +103,11 @@ class Bateau
     #[ORM\ManyToMany(targetEntity: Utilisateur::class, mappedBy: 'bateauxFavoris')]
     private Collection $utilisateursFavoris;
 
+    #[ORM\ManyToMany(targetEntity: Equipement::class, inversedBy: 'bateaux')]
+    #[ORM\JoinTable(name: 'bateau_equipement')]
+    #[Groups(['bateau:read'])]
+    private Collection $equipements;
+
     #[ORM\OneToMany(targetEntity: Reservation::class, mappedBy: 'bateau')]
     private Collection $reservations;
 
@@ -124,6 +130,7 @@ class Bateau
         $this->utilisateursFavoris = new ArrayCollection();
         $this->reservations = new ArrayCollection();
         $this->documents = new ArrayCollection();
+        $this->equipements = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -377,6 +384,27 @@ class Bateau
                 $document->setBateau(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getEquipements(): Collection
+    {
+        return $this->equipements;
+    }
+
+    public function addEquipement(Equipement $equipement): static
+    {
+        if (!$this->equipements->contains($equipement)) {
+            $this->equipements->add($equipement);
+        }
+
+        return $this;
+    }
+
+    public function removeEquipement(Equipement $equipement): static
+    {
+        $this->equipements->removeElement($equipement);
 
         return $this;
     }
