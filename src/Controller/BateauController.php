@@ -430,6 +430,64 @@ class BateauController extends AbstractController
         return $this->json($bateau, Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
     }
 
+    #[OA\Post(
+        path: '/api/bateaux/{id}/equipements',
+        summary: 'Ajouter plusieurs équipements à un bateau en une seule requête (PROPRIETAIRE)',
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['equipementIds'],
+                properties: [
+                    new OA\Property(property: 'equipementIds', type: 'array', items: new OA\Items(type: 'integer'), example: [1, 2, 3]),
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Équipements ajoutés'),
+            new OA\Response(response: 400, description: 'Données invalides'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Bateau non trouvé ou équipements introuvables'),
+        ]
+    )]
+    #[Route('/{id}/equipements', name: 'equipements_add_bulk', methods: ['POST'], requirements: ['id' => '\d+'])]
+    #[IsGranted('ROLE_PROPRIETAIRE')]
+    public function addEquipements(int $id, Request $request): JsonResponse
+    {
+        $bateau = $this->repository->find($id);
+
+        if (!$bateau) {
+            return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $equipementIds = $data['equipementIds'] ?? null;
+
+        if (!is_array($equipementIds) || empty($equipementIds)) {
+            return $this->json(['message' => "Le champ 'equipementIds' doit être un tableau non vide."], Response::HTTP_BAD_REQUEST);
+        }
+
+        $equipementIds = array_unique($equipementIds);
+        $equipements = $this->equipementRepository->findBy(['id' => $equipementIds]);
+
+        if (count($equipements) !== count($equipementIds)) {
+            return $this->json(['message' => 'Un ou plusieurs équipements sont introuvables.'], Response::HTTP_NOT_FOUND);
+        }
+
+        foreach ($equipements as $equipement) {
+            $bateau->addEquipement($equipement);
+        }
+        $this->em->flush();
+
+        return $this->json($bateau, Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
+    }
+
     #[OA\Delete(
         path: '/api/bateaux/{id}/equipements/{equipementId}',
         summary: 'Retirer un équipement d\'un bateau (PROPRIETAIRE)',
