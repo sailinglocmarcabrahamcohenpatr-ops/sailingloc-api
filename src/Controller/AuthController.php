@@ -178,7 +178,7 @@ class AuthController extends AbstractController
             return $this->render('account/error.html.twig', [], new Response('', Response::HTTP_NOT_FOUND));
         }
 
-        $utilisateur->setStatutCompte(StatutCompteEnum::ACTIF->value);
+        $utilisateur->setStatutCompte(StatutCompteEnum::ACTIF);
         $utilisateur->setTokenConfirmation(null);
 
         $em->flush();
