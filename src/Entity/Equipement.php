@@ -29,7 +29,10 @@ class Equipement
 
     #[ORM\ManyToOne(targetEntity: TypeEquipement::class, inversedBy: 'equipements')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['referentiel:read', 'bateau:read'])]
+    // Pas 'referentiel:read' ici : TypeEquipement.equipements est aussi dans ce groupe
+    // (pour nester les équipements sous chaque type dans /referentiels/types-equipements),
+    // les deux ensemble créeraient une référence circulaire à la sérialisation.
+    #[Groups(['bateau:read'])]
     private ?TypeEquipement $typeEquipement = null;
 
     #[ORM\ManyToMany(targetEntity: Bateau::class, mappedBy: 'equipements')]
