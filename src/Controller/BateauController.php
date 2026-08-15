@@ -6,6 +6,7 @@ use App\Entity\Bateau;
 use App\Enum\StatutBateauEnum;
 use App\Repository\AvisRepository;
 use App\Repository\BateauRepository;
+use App\Repository\EquipementRepository;
 use App\Repository\PortRepository;
 use App\Repository\TypeBateauRepository;
 use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
@@ -30,6 +31,7 @@ class BateauController extends AbstractController
         private readonly TypeBateauRepository $typeBateauRepository,
         private readonly AvisRepository $avisRepository,
         private readonly ValidatorInterface $validator,
+        private readonly EquipementRepository $equipementRepository,
     ) {}
 
     /** @param Bateau[] $bateaux */
@@ -387,5 +389,83 @@ class BateauController extends AbstractController
         }
 
         return $this->json($bateau->getDocuments(), Response::HTTP_OK, [], ['groups' => ['document:read']]);
+    }
+
+    #[OA\Post(
+        path: '/api/bateaux/{id}/equipements/{equipementId}',
+        summary: 'Ajouter un équipement à un bateau (PROPRIETAIRE)',
+        parameters: [
+            new OA\Parameter(name: 'id',           in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'equipementId', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Équipement ajouté'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Bateau ou équipement non trouvé'),
+        ]
+    )]
+    #[Route('/{id}/equipements/{equipementId}', name: 'equipement_add', methods: ['POST'], requirements: ['id' => '\d+', 'equipementId' => '\d+'])]
+    #[IsGranted('ROLE_PROPRIETAIRE')]
+    public function addEquipement(int $id, int $equipementId): JsonResponse
+    {
+        $bateau = $this->repository->find($id);
+
+        if (!$bateau) {
+            return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $equipement = $this->equipementRepository->find($equipementId);
+
+        if (!$equipement) {
+            return $this->json(['message' => 'Équipement non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $bateau->addEquipement($equipement);
+        $this->em->flush();
+
+        return $this->json($bateau, Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
+    }
+
+    #[OA\Delete(
+        path: '/api/bateaux/{id}/equipements/{equipementId}',
+        summary: 'Retirer un équipement d\'un bateau (PROPRIETAIRE)',
+        parameters: [
+            new OA\Parameter(name: 'id',           in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+            new OA\Parameter(name: 'equipementId', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Équipement retiré'),
+            new OA\Response(response: 403, description: 'Accès refusé'),
+            new OA\Response(response: 404, description: 'Bateau ou équipement non trouvé'),
+        ]
+    )]
+    #[Route('/{id}/equipements/{equipementId}', name: 'equipement_remove', methods: ['DELETE'], requirements: ['id' => '\d+', 'equipementId' => '\d+'])]
+    #[IsGranted('ROLE_PROPRIETAIRE')]
+    public function removeEquipement(int $id, int $equipementId): JsonResponse
+    {
+        $bateau = $this->repository->find($id);
+
+        if (!$bateau) {
+            return $this->json(['message' => 'Bateau non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$this->isGranted('ROLE_ADMIN') && $bateau->getProprietaire() !== $this->getUser()) {
+            return $this->json(['message' => 'Accès refusé.'], Response::HTTP_FORBIDDEN);
+        }
+
+        $equipement = $this->equipementRepository->find($equipementId);
+
+        if (!$equipement) {
+            return $this->json(['message' => 'Équipement non trouvé.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $bateau->removeEquipement($equipement);
+        $this->em->flush();
+
+        return $this->json($bateau, Response::HTTP_OK, [], ['groups' => ['bateau:read']]);
     }
 }
