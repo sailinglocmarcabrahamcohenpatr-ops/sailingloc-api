@@ -8,6 +8,8 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
+use Symfony\Component\Security\Core\Exception\AuthenticationException;
 
 class ApiExceptionSubscriber implements EventSubscriberInterface
 {
@@ -30,6 +32,10 @@ class ApiExceptionSubscriber implements EventSubscriberInterface
 
         if ($exception instanceof HttpExceptionInterface) {
             $statusCode = $exception->getStatusCode();
+        } elseif ($exception instanceof AuthenticationException) {
+            $statusCode = Response::HTTP_UNAUTHORIZED;
+        } elseif ($exception instanceof AccessDeniedException) {
+            $statusCode = Response::HTTP_FORBIDDEN;
         } else {
             $statusCode = Response::HTTP_INTERNAL_SERVER_ERROR;
         }
