@@ -17,6 +17,7 @@ use App\Repository\DisponibiliteRepository;
 use App\Repository\ReservationRepository;
 use App\Repository\UtilisateurRepository;
 use App\Service\NotificationService;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -193,28 +194,47 @@ class ReservationController extends AbstractController
             return $this->json(['message' => 'La date de fin doit être postérieure ou égale à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        if (count($this->repository->findOverlapping($bateau->getId(), $dateDebut, $dateFin)) > 0) {
-            return $this->json(['message' => 'Ce bateau est déjà réservé sur une partie de cette période.'], Response::HTTP_CONFLICT);
+        // Verrou pessimiste sur la ligne du bateau : toute autre requête (création ou modification)
+        // qui tenterait de réserver ce même bateau attend la fin de cette transaction avant de
+        // pouvoir lire/écrire. Ça ferme la fenêtre de race entre le check de chevauchement et
+        // l'insertion (sans ça, deux requêtes concurrentes peuvent toutes les deux lire "libre"
+        // avant qu'aucune n'ait flush, et créer deux réservations qui se chevauchent).
+        $this->em->beginTransaction();
+        try {
+            $this->em->lock($bateau, LockMode::PESSIMISTIC_WRITE);
+
+            if (count($this->repository->findOverlapping($bateau->getId(), $dateDebut, $dateFin)) > 0) {
+                $this->em->rollback();
+
+                return $this->json(['message' => 'Ce bateau est déjà réservé sur une partie de cette période.'], Response::HTTP_CONFLICT);
+            }
+
+            $reservation = new Reservation();
+            $reservation->setDateDebut($dateDebut);
+            $reservation->setDateFin($dateFin);
+            // Le montant est toujours recalculé côté serveur à partir du prix/jour réel du bateau :
+            // le montant envoyé par le client n'est jamais fiable (cf. bug prix manipulable).
+            $reservation->setMontantTotal($this->calculerMontantTotal($bateau, $dateDebut, $dateFin));
+            $reservation->setBateau($bateau);
+            $reservation->setUtilisateur($utilisateur);
+            $reservation->setContrat($contrat);
+            $reservation->setStatutReservation($statut);
+
+            $errors = $this->validator->validate($reservation);
+            if (count($errors) > 0) {
+                $this->em->rollback();
+
+                return $this->json(['message' => (string) $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $this->em->persist($reservation);
+            $this->em->flush();
+            $this->em->commit();
+        } catch (\Throwable $e) {
+            $this->em->rollback();
+
+            throw $e;
         }
-
-        $reservation = new Reservation();
-        $reservation->setDateDebut($dateDebut);
-        $reservation->setDateFin($dateFin);
-        // Le montant est toujours recalculé côté serveur à partir du prix/jour réel du bateau :
-        // le montant envoyé par le client n'est jamais fiable (cf. bug prix manipulable).
-        $reservation->setMontantTotal($this->calculerMontantTotal($bateau, $dateDebut, $dateFin));
-        $reservation->setBateau($bateau);
-        $reservation->setUtilisateur($utilisateur);
-        $reservation->setContrat($contrat);
-        $reservation->setStatutReservation($statut);
-
-        $errors = $this->validator->validate($reservation);
-        if (count($errors) > 0) {
-            return $this->json(['message' => (string) $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        $this->em->persist($reservation);
-        $this->em->flush();
 
         // Bloquer automatiquement la période dans le planning des disponibilités
         $this->bloquerDisponibilite($reservation);
@@ -278,46 +298,69 @@ class ReservationController extends AbstractController
         $data = json_decode($request->getContent(), true);
         $statutAvant = $reservation->getStatutReservation();
 
-        if (isset($data['date_debut']) || isset($data['date_fin'])) {
-            $dateDebut = isset($data['date_debut']) ? new \DateTime($data['date_debut']) : $reservation->getDateDebut();
-            $dateFin = isset($data['date_fin']) ? new \DateTime($data['date_fin']) : $reservation->getDateFin();
+        // Même protection que create() : si les dates changent, on verrouille le bateau pour
+        // la durée de la transaction avant de vérifier les chevauchements, afin qu'aucune autre
+        // requête concurrente ne puisse lire "libre" avant que celle-ci ait flush.
+        $this->em->beginTransaction();
+        try {
+            if (isset($data['date_debut']) || isset($data['date_fin'])) {
+                $dateDebut = isset($data['date_debut']) ? new \DateTime($data['date_debut']) : $reservation->getDateDebut();
+                $dateFin = isset($data['date_fin']) ? new \DateTime($data['date_fin']) : $reservation->getDateFin();
 
-            if ($dateFin < $dateDebut) {
-                return $this->json(['message' => 'La date de fin doit être postérieure ou égale à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                if ($dateFin < $dateDebut) {
+                    $this->em->rollback();
+
+                    return $this->json(['message' => 'La date de fin doit être postérieure ou égale à la date de début.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+
+                $this->em->lock($reservation->getBateau(), LockMode::PESSIMISTIC_WRITE);
+
+                if (count($this->repository->findOverlapping($reservation->getBateau()->getId(), $dateDebut, $dateFin, $reservation->getId())) > 0) {
+                    $this->em->rollback();
+
+                    return $this->json(['message' => 'Ce bateau est déjà réservé sur une partie de cette période.'], Response::HTTP_CONFLICT);
+                }
+
+                $reservation->setDateDebut($dateDebut);
+                $reservation->setDateFin($dateFin);
+                // Les dates changent : le montant recalculé côté serveur remplace l'ancien, jamais une valeur envoyée par le client.
+                $reservation->setMontantTotal($this->calculerMontantTotal($reservation->getBateau(), $dateDebut, $dateFin));
             }
 
-            if (count($this->repository->findOverlapping($reservation->getBateau()->getId(), $dateDebut, $dateFin, $reservation->getId())) > 0) {
-                return $this->json(['message' => 'Ce bateau est déjà réservé sur une partie de cette période.'], Response::HTTP_CONFLICT);
-            }
+            if (isset($data['id_statut_reservation'])) {
+                $statut = StatutReservationEnum::tryFrom($data['id_statut_reservation']);
+                if (!$statut) {
+                    $this->em->rollback();
 
-            $reservation->setDateDebut($dateDebut);
-            $reservation->setDateFin($dateFin);
-            // Les dates changent : le montant recalculé côté serveur remplace l'ancien, jamais une valeur envoyée par le client.
-            $reservation->setMontantTotal($this->calculerMontantTotal($reservation->getBateau(), $dateDebut, $dateFin));
-        }
+                    return $this->json(['message' => 'Statut invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+                }
+                $reservation->setStatutReservation($statut);
 
-        if (isset($data['id_statut_reservation'])) {
-            $statut = StatutReservationEnum::tryFrom($data['id_statut_reservation']);
-            if (!$statut) return $this->json(['message' => 'Statut invalide.'], Response::HTTP_UNPROCESSABLE_ENTITY);
-            $reservation->setStatutReservation($statut);
-
-            // La confirmation par le propriétaire vaut encaissement pour le locataire : on marque le
-            // paiement comme payé ici plutôt que de dépendre du webhook Stripe (souvent indisponible en local).
-            if ($statut === StatutReservationEnum::CONFIRMEE) {
-                foreach ($reservation->getPaiements() as $paiement) {
-                    if ($paiement->getStatutPaiement() === StatutPaiementEnum::EN_ATTENTE) {
-                        $paiement->setStatutPaiement(StatutPaiementEnum::PAYE);
+                // La confirmation par le propriétaire vaut encaissement pour le locataire : on marque le
+                // paiement comme payé ici plutôt que de dépendre du webhook Stripe (souvent indisponible en local).
+                if ($statut === StatutReservationEnum::CONFIRMEE) {
+                    foreach ($reservation->getPaiements() as $paiement) {
+                        if ($paiement->getStatutPaiement() === StatutPaiementEnum::EN_ATTENTE) {
+                            $paiement->setStatutPaiement(StatutPaiementEnum::PAYE);
+                        }
                     }
                 }
             }
-        }
 
-        $errors = $this->validator->validate($reservation);
-        if (count($errors) > 0) {
-            return $this->json(['message' => (string) $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+            $errors = $this->validator->validate($reservation);
+            if (count($errors) > 0) {
+                $this->em->rollback();
 
-        $this->em->flush();
+                return $this->json(['message' => (string) $errors], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+
+            $this->em->flush();
+            $this->em->commit();
+        } catch (\Throwable $e) {
+            $this->em->rollback();
+
+            throw $e;
+        }
 
         // Synchroniser le blocage de disponibilité selon le nouveau statut / les nouvelles dates
         $this->syncDisponibilite($reservation);
